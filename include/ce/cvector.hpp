@@ -43,7 +43,6 @@
 // horizontal alignment where I feel like it looks more consistent.
 // **********************************
 
-#include <array>
 #include <cassert>
 #include <concepts>
 #include <memory>
@@ -231,10 +230,7 @@ struct cvector_impl
   using   value_type = T;
   using storage_type = P0848::storage<T>;
 
-  // The storage array and current size. Initialization will just set the active
-  // variant in the union to be the monostate, so not a big deal. Allocated as
-  // std::array because gcc bugs if it's a C array.
-  //std::array<storage_type, N> storage = {};
+  // The storage array and current size.
   storage_type storage[N] = {};
   int n = 0;
 
