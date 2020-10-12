@@ -43,6 +43,7 @@
 // horizontal alignment where I feel like it looks more consistent.
 // **********************************
 
+#include <algorithm>
 #include <cassert>
 #include <type_traits>
 #include <memory>
