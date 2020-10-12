@@ -87,9 +87,9 @@ union storage;
 #define P0848_WRAP(x) x
 
 // These macros just pick either a defaulted or empty version of the relevant
-// constructor, based on the passed defaulted flag. The `type` is only
-// `storage` in this application, but parameterizing it makes it a bit more
-// generic.
+// constructor, based on the passed defaulted flag. None of the operators
+// directly interact with the underlying storage, we assume that the hosted
+// class deals with everything explicitly.
 #define P0848_MAKE_CTOR_1(type) constexpr type() = default
 #define P0848_MAKE_CTOR_0(type) constexpr type() {}
 #define P0848_MAKE_CTOR(defaulted, type)        \
@@ -120,10 +120,9 @@ union storage;
 #define P0848_MAKE_MOVE(defaulted, type)                     \
   P0848_MAKE_MOVE_##defaulted(P0848_WRAP(type))
 
-// Older clang has trouble with tracking the union's active member when it
-// doesn't include a monostate.
-#if (__clang_major__ < 11)
-#define CLANG_NEEDS_MONOSTATE(id) //struct {} id = {}
+// Clang 10.0.1 on my Debian testing system wants monostate.
+#ifdef __clang__
+#define CLANG_NEEDS_MONOSTATE(id) struct {} id = {}
 #else
 #define CLANG_NEEDS_MONOSTATE(id)
 #endif
@@ -217,86 +216,119 @@ P0848_MAKE(storage, 1, 1, 1, 1, 1, 1);
 #undef P0848_MAKE_CTOR
 #undef P0848_WRAP
 
-template <typename Derived, typename T, bool = std::is_trivially_destructible_v<T>>
-struct dtor {};
-
-template <typename Derived, typename T>
-struct dtor<Derived, T, false>
-{
-  constexpr ~dtor() {
-    static_cast<Derived*>(this)->on_dtor();
-  }
-  constexpr  dtor()                       = default;
-  constexpr  dtor(const dtor&)            = default;
-  constexpr  dtor(dtor&&)                 = default;
-  constexpr  dtor& operator=(const dtor&) = default;
-  constexpr  dtor& operator=(dtor&&)      = default;
+template <typename Base,
+          bool = std::is_trivially_destructible_v<typename Base::value_type>>
+struct dtor : Base {
+  using Base::Base;
 };
 
-template <typename Derived, typename T, bool = std::is_trivially_copy_constructible_v<T>>
-struct copy_ctor {};
-
-template <typename Derived, typename T>
-struct copy_ctor<Derived, T, false>
+template <typename Base>
+struct dtor<Base, false> : Base
 {
+  using Base::Base;
+
+  constexpr ~dtor() {
+    this->on_dtor();
+  }
+
+  constexpr dtor()                       = default;
+  constexpr dtor(const dtor&)            = default;
+  constexpr dtor(dtor&&)                 = default;
+  constexpr dtor& operator=(const dtor&) = default;
+  constexpr dtor& operator=(dtor&&)      = default;
+};
+
+template <typename Base,
+          bool = std::is_trivially_copy_constructible_v<typename Base::value_type>>
+struct copy_ctor : dtor<Base> {
+  using dtor<Base>::dtor;
+};
+
+template <typename Base>
+struct copy_ctor<Base, false> : dtor<Base>
+{
+  using dtor<Base>::dtor;
+
+  constexpr copy_ctor(const copy_ctor& d) {
+    this->on_copy_ctor(d);
+  }
+
   constexpr ~copy_ctor()                            = default;
   constexpr  copy_ctor()                            = default;
   constexpr  copy_ctor(copy_ctor&&)                 = default;
   constexpr  copy_ctor& operator=(const copy_ctor&) = default;
   constexpr  copy_ctor& operator=(copy_ctor&&)      = default;
-  constexpr  copy_ctor(const copy_ctor& d) {
-    static_cast<Derived*>(this)->on_copy_ctor(static_cast<const Derived&>(d));
-  }
 };
 
-template <typename Derived, typename T, bool = std::is_trivially_move_constructible_v<T>>
-struct move_ctor {};
+template <typename Base,
+          bool = std::is_trivially_move_constructible_v<typename Base::value_type>>
+struct move_ctor : copy_ctor<Base> {
+  using copy_ctor<Base>::copy_ctor;
+};
 
-template <typename Derived, typename T>
-struct move_ctor<Derived, T, false>
+template <typename Base>
+struct move_ctor<Base, false> : copy_ctor<Base>
 {
+  using copy_ctor<Base>::copy_ctor;
+
+  constexpr move_ctor(move_ctor&& d) {
+    this->on_move_ctor(std::move(d));
+  }
+
   constexpr ~move_ctor()                            = default;
   constexpr  move_ctor()                            = default;
   constexpr  move_ctor(const move_ctor&)            = default;
   constexpr  move_ctor& operator=(const move_ctor&) = default;
   constexpr  move_ctor& operator=(move_ctor&&)      = default;
-  constexpr  move_ctor(move_ctor&& d) {
-    static_cast<Derived*>(this)->on_move_ctor(std::move(static_cast<Derived&&>(d)));
-  }
 };
 
-template <typename Derived, typename T, bool = std::is_trivially_copy_assignable_v<T>>
-struct copy {};
-
-template <typename Derived, typename T>
-struct copy<Derived, T, false>
-{
-  constexpr ~copy()                  = default;
-  constexpr  copy()                  = default;
-  constexpr  copy(const copy&)       = default;
-  constexpr  copy(copy&&)            = default;
-  constexpr  copy& operator=(copy&&) = default;
-  constexpr  copy& operator=(const copy& d) {
-    static_cast<Derived*>(this)->on_copy(static_cast<const Derived&>(d));
-    return *this;
-  }
+template <typename Base,
+          bool = std::is_trivially_copy_assignable_v<typename Base::value_type>>
+struct copy : move_ctor<Base> {
+  using move_ctor<Base>::move_ctor;
 };
 
-template <typename Derived, typename T, bool = std::is_trivially_move_assignable_v<T>>
-struct move {};
-
-template <typename Derived, typename T>
-struct move<Derived, T, false>
+template <typename Base>
+struct copy<Base, false> : move_ctor<Base>
 {
+  using move_ctor<Base>::move_ctor;
+
+  constexpr copy& operator=(const copy& d) {
+    return (this->on_copy(d), *this);
+  }
+
+  constexpr ~copy()                         = default;
+  constexpr  copy()                         = default;
+  constexpr  copy(const copy&)              = default;
+  constexpr  copy(copy&&)                   = default;
+  constexpr  copy& operator=(copy&&)        = default;
+};
+
+template <typename Base,
+          bool = std::is_trivially_move_assignable_v<typename Base::value_type>>
+struct move : copy<Base> {
+  using copy<Base>::copy;
+};
+
+template <typename Base>
+struct move<Base, false> : copy<Base>
+{
+  using copy<Base>::copy;
+
+  constexpr move& operator=(move&& d) {
+    return (this->on_move(std::move(d)), *this);
+  }
+
   constexpr ~move()                       = default;
   constexpr  move()                       = default;
   constexpr  move(const move&)            = default;
   constexpr  move(move&&)                 = default;
   constexpr  move& operator=(const move&) = default;
-  constexpr  move& operator=(move&& d) {
-    static_cast<Derived*>(this)->on_move(std::move(static_cast<Derived&&>(d)));
-    return *this;
-  }
+};
+
+template <typename Base>
+struct ops : move<Base> {
+  using move<Base>::move;
 };
 }
 
@@ -334,7 +366,7 @@ struct cvector_impl
       : cvector_impl(std::forward<Ts>(ts)...)
   {}
 
-  // Underlying data (not constexpr because of the cast)
+  // Underlying data (not constexpr because of the reinterpret cast)
   const T* data() const { return reinterpret_cast<const T*>(&storage); }
         T* data()       { return reinterpret_cast<      T*>(&storage); }
 
@@ -531,28 +563,9 @@ struct cvector_impl
 
 // The externally-visible cvector class.
 template <typename T, int N>
-struct cvector : cvector_impl<T, N>,
-  P0848::dtor<cvector<T, N>, T>,
-  P0848::copy_ctor<cvector<T, N>, T>,
-  P0848::move_ctor<cvector<T, N>, T>,
-  P0848::copy<cvector<T, N>, T>,
-  P0848::move<cvector<T, N>, T>
+struct cvector : P0848::ops<cvector_impl<T, N>>
 {
-  using cvector_impl<T, N>::cvector_impl;
-
-  constexpr  cvector() = default;
-  constexpr ~cvector() = default;
-  constexpr  cvector(const cvector&) = default;
-  constexpr  cvector(cvector&&) = default;
-  constexpr  cvector& operator=(const cvector&) = default;
-  constexpr  cvector& operator=(cvector&&) = default;
-
- protected:
-  friend class P0848::dtor<cvector<T, N>, T>;
-  friend class P0848::copy_ctor<cvector<T, N>, T>;
-  friend class P0848::move_ctor<cvector<T, N>, T>;
-  friend class P0848::copy<cvector<T, N>, T>;
-  friend class P0848::move<cvector<T, N>, T>;
+  using P0848::ops<cvector_impl<T, N>>::ops;
 };
 
 template <typename T, typename... Ts>
