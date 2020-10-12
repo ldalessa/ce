@@ -250,24 +250,26 @@ struct cvector_impl
   storage_type storage[N] = {};
   int n = 0;
 
-  constexpr cvector_impl() = default;
+  constexpr cvector_impl()                    = default;
   constexpr cvector_impl(const cvector_impl&) = default;
-  constexpr cvector_impl(cvector_impl&&) = default;
+  constexpr cvector_impl(cvector_impl&&)      = default;
+
+  constexpr cvector_impl(int n) : n(n) { assert(0 <= n && n <= N);
+    static_assert(std::is_default_constructible_v<T>);
+    for (int i = 0; i < n; ++i) {
+      construct(storage[i]);
+    }
+  }
 
   template <std::convertible_to<T>... Ts>
-  constexpr cvector_impl(Ts&&... ts) {
+  constexpr cvector_impl(std::in_place_t, Ts&&... ts) {
     static_assert(sizeof...(ts) <= N);
     (emplace_back(std::forward<Ts>(ts)), ...);
   }
 
   template <std::convertible_to<T>... Ts>
-  constexpr cvector_impl(std::in_place_t, Ts&&... ts)
-      : cvector_impl(std::forward<Ts>(ts)...)
-  {}
-
-  template <std::convertible_to<T>... Ts>
   constexpr cvector_impl(std::in_place_type_t<T>, Ts&&... ts)
-      : cvector_impl(std::forward<Ts>(ts)...)
+      : cvector_impl(std::in_place, std::forward<Ts>(ts)...)
   {}
 
   // If the underlying type is trivially copy assignable, then the default copy

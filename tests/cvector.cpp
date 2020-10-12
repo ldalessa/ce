@@ -77,19 +77,21 @@ template <typename T>
 constexpr bool ctor() {
   cvector<T, 3> a;
   assert(size(a) == 0);
+  cvector<T, 3> b(3);
+  assert(size(b) == 3);
   return true;
 }
 
 template <typename T>
 constexpr bool variadic_ctor() {
-  cvector<T, 3> a = { 1, 2 };
+  cvector<T, 3> a = { std::in_place, 1, 2 };
   assert(size(a) == 2);
   return true;
 }
 
 template <typename T>
 constexpr bool read() {
-  cvector<T, 3> a = { 1, 2 };
+  cvector<T, 3> a = { std::in_place, 1, 2 };
   assert(size(a) == 2);
   assert(a[0] == T(1));
   assert(a[1] == T(2));
@@ -137,7 +139,7 @@ constexpr bool assign() {
 
 template <typename T>
 constexpr bool pop() {
-  cvector<T, 3> a = { 1, 2};
+  cvector<T, 3> a = { std::in_place, 1, 2};
   assert(size(a) == 2);
   assert(a.pop_back() == T(2));
   assert(a.pop_back() == T(1));
@@ -182,7 +184,7 @@ constexpr bool push_rref() {
 
 template <typename T>
 constexpr bool copy_ctor() {
-  cvector<T, 3> a = { 1, 2 };
+  cvector<T, 3> a = { std::in_place, 1, 2 };
   if (!std::is_constant_evaluated()) {
     fmt::print("constructing cvector<T, 3> b = a (begin)\n");
   }
@@ -200,7 +202,7 @@ constexpr bool copy_ctor() {
 
 template <typename T>
 constexpr bool move_ctor() {
-  cvector<T, 3> a = { 1, 2 };
+  cvector<T, 3> a = { std::in_place, 1, 2 };
   cvector<T, 3> b = std::move(a);
   assert(size(b) == 2);
   assert(b[1] == T(2));
@@ -210,7 +212,7 @@ constexpr bool move_ctor() {
 
 template <typename T>
 constexpr bool copy() {
-  cvector<T, 3> a = { 1, 2 };
+  cvector<T, 3> a = { std::in_place, 1, 2 };
   cvector<T, 3> b;
   if (!std::is_constant_evaluated()) {
     fmt::print("copying b = a (begin) [{}, {}]\n", b.n, a.n);
@@ -229,8 +231,8 @@ constexpr bool copy() {
 
 template <typename T>
 constexpr bool copy_larger() {
-  cvector<T, 3> a = { 1, 2, 3 };
-  cvector<T, 3> b = { 4, 5 };
+  cvector<T, 3> a = { std::in_place, 1, 2, 3 };
+  cvector<T, 3> b = { std::in_place, 4, 5 };
   b = a;
   assert(size(b) == size(a));
   assert(b[2] == T(3));
@@ -244,8 +246,8 @@ constexpr bool copy_larger() {
 
 template <typename T>
 constexpr bool copy_smaller() {
-  cvector<T, 3> a = { 1, 2 };
-  cvector<T, 3> b = { 3, 4, 5 };
+  cvector<T, 3> a = { std::in_place, 1, 2 };
+  cvector<T, 3> b = { std::in_place, 3, 4, 5 };
   b = a;
   assert(size(b) == size(a));
   assert(b[1] == T(2));
@@ -257,7 +259,7 @@ constexpr bool copy_smaller() {
 
 template <typename T>
 constexpr bool move() {
-  cvector<T, 3> a = { 1, 2 };
+  cvector<T, 3> a = { std::in_place, 1, 2 };
   cvector<T, 3> b;
   b = std::move(a);
   assert(size(b) == 2);
@@ -268,8 +270,8 @@ constexpr bool move() {
 
 template <typename T>
 constexpr bool move_larger() {
-  cvector<T, 3> a = { 1, 2, 3 };
-  cvector<T, 3> b = { 4, 5 };
+  cvector<T, 3> a = { std::in_place, 1, 2, 3 };
+  cvector<T, 3> b = { std::in_place, 4, 5 };
   b = std::move(a);
   assert(size(b) == 3);
   assert(b[2] == T(3));
@@ -280,8 +282,8 @@ constexpr bool move_larger() {
 
 template <typename T>
 constexpr bool move_smaller() {
-  cvector<T, 3> a = { 1, 2 };
-  cvector<T, 3> b = { 3, 4, 5 };
+  cvector<T, 3> a = { std::in_place, 1, 2 };
+  cvector<T, 3> b = { std::in_place, 3, 4, 5 };
   b = std::move(a);
   assert(size(b) == 2);
   assert(b[1] == T(2));
@@ -291,7 +293,7 @@ constexpr bool move_smaller() {
 
 template <typename T>
 constexpr bool resize_inplace() {
-  cvector<T, 3> a = { 1, 2 };
+  cvector<T, 3> a = { std::in_place, 1, 2 };
   a.resize(2);
   assert(size(a) == 2);
   assert(a[1] == T(2));
@@ -301,7 +303,7 @@ constexpr bool resize_inplace() {
 
 template <typename T>
 constexpr bool resize_smaller() {
-  cvector<T, 3> a = { 1, 2 };
+  cvector<T, 3> a = { std::in_place, 1, 2 };
   a.resize(1);
   assert(size(a) == 1);
   assert(a[0] == T(1));
@@ -310,7 +312,7 @@ constexpr bool resize_smaller() {
 
 template <typename T>
 constexpr bool resize_larger() {
-  cvector<T, 3> a = { 1, 2 };
+  cvector<T, 3> a = { std::in_place, 1, 2 };
   a.resize(3);
   assert(size(a) == 3);
   assert(a[2] == T());
@@ -321,7 +323,7 @@ constexpr bool resize_larger() {
 
 template <typename T>
 constexpr bool clear() {
-  cvector<Foo, 3> a = { 1, 2, 3 };
+  cvector<Foo, 3> a = { std::in_place, 1, 2, 3 };
   assert(size(a) == 3);
   a.clear();
   assert(size(a) == 0);
@@ -330,7 +332,7 @@ constexpr bool clear() {
 
 template <typename T>
 constexpr bool iterator() {
-  cvector<T, 16> a = { 1, 2, 3, 4 };
+  cvector<T, 16> a = { std::in_place, 1, 2, 3, 4 };
   assert(size(a) == 4);
   assert(a.begin() == a.begin());
   assert(a.end() == a.end());
@@ -343,7 +345,7 @@ constexpr bool iterator() {
 }
 
 constexpr bool iteration() {
-  cvector<int, 16> a = { 1, 2, 3, 4 };
+  cvector<int, 16> a = { std::in_place, 1, 2, 3, 4 };
   assert(size(a) == 4);
 
   int total = 0;
@@ -362,7 +364,7 @@ constexpr bool iteration() {
 
 constexpr bool ref_wrapper() {
   int i = 1;
-  cvector<std::reference_wrapper<int>, 5> a = { std::ref(i), std::ref(i), std::ref(i) };
+  cvector<std::reference_wrapper<int>, 5> a = { std::in_place, std::ref(i), std::ref(i), std::ref(i) };
   assert(size(a) == 3);
   assert(a.pop_back() == 1 && i == 1);
   assert(a.pop_back() == 1 && i == 1);
