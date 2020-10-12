@@ -1,5 +1,4 @@
 #pragma once
-#include <fmt/core.h>
 
 // A C++20 constexpr vector implementation.
 //
@@ -467,7 +466,7 @@ struct cvector_impl
   template <typename... Ts>
   constexpr static T& construct(storage_type& s, Ts&&... ts)
   {
-    static_assert(std::constructible_from<T, Ts...>);
+    static_assert(std::is_constructible_v<T, Ts...>);
     // clang is correct, but gcc isn't ready at the time I'm doing this
 #ifdef __clang__
     return *std::construct_at(std::addressof(s.t), std::forward<Ts>(ts)...);
