@@ -255,7 +255,7 @@ struct cvector_impl
   constexpr cvector_impl(cvector_impl&&)      = default;
 
   constexpr cvector_impl(int n) : n(n) { assert(0 <= n && n <= N);
-    static_assert(std::is_default_constructible_v<T>);
+    assert(std::is_default_constructible_v<T> || n == 0);
     for (int i = 0; i < n; ++i) {
       construct(storage[i]);
     }
