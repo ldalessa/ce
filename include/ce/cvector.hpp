@@ -270,17 +270,41 @@ struct cvector_impl
       : cvector_impl(std::forward<Ts>(ts)...)
   {}
 
+  // If the underlying type is trivially copy assignable, then the default copy
+  // operator is fine, otherwise we manually manage the underlying storage `t`.
   constexpr static bool triv_copy = std::is_trivially_copy_assignable_v<T>;
   constexpr cvector_impl& operator=(const cvector_impl&) requires(triv_copy) = default;
   constexpr cvector_impl& operator=(const cvector_impl& b) requires(!triv_copy) {
-    this->on_copy(b);
+    int i = 0;
+    for (; i < std::min(n, b.n); ++i) {
+      storage[i].t = b.storage[i].t;
+    }
+    for (; i < b.n; ++i) {
+      construct(storage[i], b.storage[i].t);
+    }
+    for (; i < n; ++i) {
+      destroy(storage[i]);
+    }
+    n = b.n;
     return *this;
   }
 
+  // If the underlying type is trivially move assignable, then the default move
+  // operator is fine, otherwise we manually manage the underlying storage `t`.
   constexpr static bool triv_move = std::is_trivially_move_assignable_v<T>;
   constexpr cvector_impl& operator=(cvector_impl&&) requires(triv_move) = default;
   constexpr cvector_impl& operator=(cvector_impl&& b) requires(!triv_move) {
-    this->on_move(std::move(b));
+    int i = 0;
+    for (; i < std::min(n, b.n); ++i) {
+      storage[i].t = std::move(b.storage[i]).t;
+    }
+    for (; i < b.n; ++i) {
+      construct(storage[i], std::move(b.storage[i]).t);
+    }
+    for (; i < n; ++i) {
+      destroy(storage[i]);
+    }
+    n = std::exchange(b.n, 0);
     return *this;
   }
 
@@ -430,8 +454,7 @@ struct cvector_impl
   }
 
   // Protected handlers are called by our subclasses as needed in order to
-  // clear, copy, and/or move the array properly. Copying and moving require us
-  // to properly manage the active member of the storage array.
+  // clear, copy construct, and/or move construct the array properly.
  protected:
   constexpr void on_dtor() {
     clear();
@@ -443,39 +466,11 @@ struct cvector_impl
     }
   }
 
-  constexpr void on_copy(const cvector_impl& b) {
-    int i = 0;
-    for (; i < std::min(n, b.n); ++i) {
-      storage[i].t = b.storage[i].t;
-    }
-    for (; i < b.n; ++i) {
-      construct(storage[i], b.storage[i].t);
-    }
-    for (; i < n; ++i) {
-      destroy(storage[i]);
-    }
-    n = b.n;
-  }
-
   constexpr void on_move_ctor(cvector_impl&& b) {
     for (n = 0; n < b.n; ++n) {
       construct(storage[n], std::move(b.storage[n]).t);
     }
     b.n = 0;
-  }
-
-  constexpr void on_move(cvector_impl&& b) {
-    int i = 0;
-    for (; i < std::min(n, b.n); ++i) {
-      storage[i].t = std::move(b.storage[i]).t;
-    }
-    for (; i < b.n; ++i) {
-      construct(storage[i], std::move(b.storage[i]).t);
-    }
-    for (; i < n; ++i) {
-      destroy(storage[i]);
-    }
-    n = std::exchange(b.n, 0);
   }
 };
 
