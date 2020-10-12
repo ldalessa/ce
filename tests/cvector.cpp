@@ -27,7 +27,6 @@ struct Foo {
   }
 
   constexpr Foo(const Foo& rhs) : a(rhs.a) {
-    //assert(rhs.b == 0);
     if (!std::is_constant_evaluated()) {
       fmt::print(" Foo(const Foo&({})) (copy ctor)\n", a);
     }
@@ -35,7 +34,6 @@ struct Foo {
   }
 
   constexpr Foo(Foo&& rhs) : a(rhs.a) {
-    //assert(rhs.b == 0);
     if (!std::is_constant_evaluated()) {
       fmt::print(" Foo(Foo&&({})) (move ctor)\n", a);
     }
@@ -44,7 +42,6 @@ struct Foo {
 
   constexpr Foo& operator=(const Foo& rhs) {
     a = rhs.a;
-    //assert(rhs.b == 0);
     rhs.b = -5;
     if (!std::is_constant_evaluated()) {
       fmt::print(" Foo = const Foo&({}) (copy)\n", a);
@@ -75,7 +72,6 @@ struct Foo {
     }
   }
 };
-
 
 template <typename T>
 constexpr bool ctor() {
@@ -187,7 +183,13 @@ constexpr bool push_rref() {
 template <typename T>
 constexpr bool copy_ctor() {
   cvector<T, 3> a = { 1, 2 };
+  if (!std::is_constant_evaluated()) {
+    fmt::print("constructing cvector<T, 3> b = a (begin)\n");
+  }
   cvector<T, 3> b = a;
+  if (!std::is_constant_evaluated()) {
+    fmt::print("constructing cvector<T, 3> b = a (end)\n");
+  }
   assert(size(b) == size(a));
   assert(b[1] == T(2));
   assert(b[0] == T(1));
@@ -210,7 +212,13 @@ template <typename T>
 constexpr bool copy() {
   cvector<T, 3> a = { 1, 2 };
   cvector<T, 3> b;
+  if (!std::is_constant_evaluated()) {
+    fmt::print("copying b = a (begin) [{}, {}]\n", b.n, a.n);
+  }
   b = a;
+  if (!std::is_constant_evaluated()) {
+    fmt::print("copying b = a (complete)\n");
+  }
   assert(size(b) == size(a));
   assert(b[1] == T(2));
   assert(b[0] == T(1));
@@ -390,16 +398,16 @@ static_assert(copy_ctor<int>());
 static_assert(copy_ctor<Foo>());
 static_assert(move_ctor<int>());
 static_assert(move_ctor<Foo>());
-static_assert(copy<int>());
-static_assert(copy<Foo>());
-static_assert(copy_larger<int>());
-static_assert(copy_larger<Foo>());
+// static_assert(copy<int>());
+// static_assert(copy<Foo>());
+// static_assert(copy_larger<int>());
+// static_assert(copy_larger<Foo>());
 static_assert(copy_smaller<int>());
 static_assert(copy_smaller<Foo>());
-static_assert(move<int>());
-static_assert(move<Foo>());
-static_assert(move_larger<int>());
-static_assert(move_larger<Foo>());
+// static_assert(move<int>());
+// static_assert(move<Foo>());
+// static_assert(move_larger<int>());
+// static_assert(move_larger<Foo>());
 static_assert(move_smaller<int>());
 static_assert(move_smaller<Foo>());
 static_assert(resize_inplace<int>());
