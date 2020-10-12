@@ -9,6 +9,10 @@ struct Foo {
   int a;
   mutable int b;
 
+  friend std::string to_string(const Foo& foo) {
+    return std::to_string(foo.a);
+  }
+
   // unit tests want this to work
   constexpr bool operator==(const Foo& rhs) const {
     return a == rhs.a;
@@ -187,7 +191,13 @@ constexpr bool push_rref() {
 template <typename T>
 constexpr bool copy_ctor() {
   cvector<T, 3> a = { 1, 2 };
+  if (!std::is_constant_evaluated()) {
+    fmt::print("constructing cvector<T, 3> b = a (begin)\n");
+  }
   cvector<T, 3> b = a;
+  if (!std::is_constant_evaluated()) {
+    fmt::print("constructing cvector<T, 3> b = a (end)\n");
+  }
   assert(size(b) == size(a));
   assert(b[1] == T(2));
   assert(b[0] == T(1));
@@ -210,7 +220,13 @@ template <typename T>
 constexpr bool copy() {
   cvector<T, 3> a = { 1, 2 };
   cvector<T, 3> b;
+  if (!std::is_constant_evaluated()) {
+    fmt::print("copying b = a (begin)\n");
+  }
   b = a;
+  if (!std::is_constant_evaluated()) {
+    fmt::print("copying b = a (complete)\n");
+  }
   assert(size(b) == size(a));
   assert(b[1] == T(2));
   assert(b[0] == T(1));
