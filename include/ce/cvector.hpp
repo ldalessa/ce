@@ -45,7 +45,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <type_traits>
+#include <concepts>
 #include <memory>
 
 namespace ce
@@ -73,9 +73,7 @@ template <typename T,
           int = std::is_trivially_constructible_v<T>,
           int = std::is_trivially_destructible_v<T>,
           int = std::is_trivially_copy_constructible_v<T>,
-          int = std::is_trivially_move_constructible_v<T>,
-          int = std::is_trivially_copy_assignable_v<T>,
-          int = std::is_trivially_move_assignable_v<T>>
+          int = std::is_trivially_move_constructible_v<T>>
 union storage;
 // {
 //   T t;
@@ -111,16 +109,6 @@ union storage;
 #define P0848_MAKE_MOVE_CTOR(defaulted, type)           \
   P0848_MAKE_MOVE_CTOR_##defaulted(P0848_WRAP(type))
 
-#define P0848_MAKE_COPY_1(type) constexpr type& operator=(const type&) = default
-#define P0848_MAKE_COPY_0(type) constexpr type& operator=(const type&) { return *this; }
-#define P0848_MAKE_COPY(defaulted, type)                     \
-  P0848_MAKE_COPY_##defaulted(P0848_WRAP(type))
-
-#define P0848_MAKE_MOVE_1(type) constexpr type& operator=(type&&) = default
-#define P0848_MAKE_MOVE_0(type) constexpr type& operator=(type&&) { return *this; }
-#define P0848_MAKE_MOVE(defaulted, type)                     \
-  P0848_MAKE_MOVE_##defaulted(P0848_WRAP(type))
-
 // Clang 10.0.1 on my Debian testing system wants monostate.
 #ifdef __clang__
 #define CLANG_NEEDS_MONOSTATE(id) struct {} id = {}
@@ -129,9 +117,9 @@ union storage;
 #endif
 
 // Expands into one of the storage union types.
-#define P0848_MAKE(type, triv_ctor, triv_dtor, triv_cctor, triv_mctor, triv_copy, triv_move) \
+#define P0848_MAKE(type, triv_ctor, triv_dtor, triv_cctor, triv_mctor)  \
   template <typename T>                                                 \
-  union type<T, triv_ctor, triv_dtor, triv_cctor, triv_mctor, triv_copy, triv_move> \
+  union type<T, triv_ctor, triv_dtor, triv_cctor, triv_mctor>           \
   {                                                                     \
     T t;                                                                \
     CLANG_NEEDS_MONOSTATE(_);                                           \
@@ -139,75 +127,33 @@ union storage;
     P0848_MAKE_DTOR(triv_dtor,       P0848_WRAP(type));                 \
     P0848_MAKE_COPY_CTOR(triv_cctor, P0848_WRAP(type));                 \
     P0848_MAKE_MOVE_CTOR(triv_mctor, P0848_WRAP(type));                 \
-    P0848_MAKE_COPY(triv_copy,       P0848_WRAP(type));                 \
-    P0848_MAKE_MOVE(triv_move,       P0848_WRAP(type));                 \
+                                                                        \
+    constexpr static bool triv_copy = std::is_trivially_copy_assignable_v<T>; \
+    constexpr type& operator=(const type&) requires(triv_copy) = default; \
+    constexpr type& operator=(const type&) requires(!triv_copy) {}      \
+                                                                        \
+    constexpr static bool triv_move = std::is_trivially_move_assignable_v<T>; \
+    constexpr type& operator=(type&&) requires(triv_move) = default;    \
+    constexpr type& operator=(type&&) requires(!triv_move) {}           \
   }
 
-// Expand the 64 storage union configurations.
-P0848_MAKE(storage, 0, 0, 0, 0, 0, 0);
-P0848_MAKE(storage, 0, 0, 0, 0, 0, 1);
-P0848_MAKE(storage, 0, 0, 0, 0, 1, 0);
-P0848_MAKE(storage, 0, 0, 0, 0, 1, 1);
-P0848_MAKE(storage, 0, 0, 0, 1, 0, 0);
-P0848_MAKE(storage, 0, 0, 0, 1, 0, 1);
-P0848_MAKE(storage, 0, 0, 0, 1, 1, 0);
-P0848_MAKE(storage, 0, 0, 0, 1, 1, 1);
-P0848_MAKE(storage, 0, 0, 1, 0, 0, 0);
-P0848_MAKE(storage, 0, 0, 1, 0, 0, 1);
-P0848_MAKE(storage, 0, 0, 1, 0, 1, 0);
-P0848_MAKE(storage, 0, 0, 1, 0, 1, 1);
-P0848_MAKE(storage, 0, 0, 1, 1, 0, 0);
-P0848_MAKE(storage, 0, 0, 1, 1, 0, 1);
-P0848_MAKE(storage, 0, 0, 1, 1, 1, 0);
-P0848_MAKE(storage, 0, 0, 1, 1, 1, 1);
-P0848_MAKE(storage, 0, 1, 0, 0, 0, 0);
-P0848_MAKE(storage, 0, 1, 0, 0, 0, 1);
-P0848_MAKE(storage, 0, 1, 0, 0, 1, 0);
-P0848_MAKE(storage, 0, 1, 0, 0, 1, 1);
-P0848_MAKE(storage, 0, 1, 0, 1, 0, 0);
-P0848_MAKE(storage, 0, 1, 0, 1, 0, 1);
-P0848_MAKE(storage, 0, 1, 0, 1, 1, 0);
-P0848_MAKE(storage, 0, 1, 0, 1, 1, 1);
-P0848_MAKE(storage, 0, 1, 1, 0, 0, 0);
-P0848_MAKE(storage, 0, 1, 1, 0, 0, 1);
-P0848_MAKE(storage, 0, 1, 1, 0, 1, 0);
-P0848_MAKE(storage, 0, 1, 1, 0, 1, 1);
-P0848_MAKE(storage, 0, 1, 1, 1, 0, 0);
-P0848_MAKE(storage, 0, 1, 1, 1, 0, 1);
-P0848_MAKE(storage, 0, 1, 1, 1, 1, 0);
-P0848_MAKE(storage, 0, 1, 1, 1, 1, 1);
-P0848_MAKE(storage, 1, 0, 0, 0, 0, 0);
-P0848_MAKE(storage, 1, 0, 0, 0, 0, 1);
-P0848_MAKE(storage, 1, 0, 0, 0, 1, 0);
-P0848_MAKE(storage, 1, 0, 0, 0, 1, 1);
-P0848_MAKE(storage, 1, 0, 0, 1, 0, 0);
-P0848_MAKE(storage, 1, 0, 0, 1, 0, 1);
-P0848_MAKE(storage, 1, 0, 0, 1, 1, 0);
-P0848_MAKE(storage, 1, 0, 0, 1, 1, 1);
-P0848_MAKE(storage, 1, 0, 1, 0, 0, 0);
-P0848_MAKE(storage, 1, 0, 1, 0, 0, 1);
-P0848_MAKE(storage, 1, 0, 1, 0, 1, 0);
-P0848_MAKE(storage, 1, 0, 1, 0, 1, 1);
-P0848_MAKE(storage, 1, 0, 1, 1, 0, 0);
-P0848_MAKE(storage, 1, 0, 1, 1, 0, 1);
-P0848_MAKE(storage, 1, 0, 1, 1, 1, 0);
-P0848_MAKE(storage, 1, 0, 1, 1, 1, 1);
-P0848_MAKE(storage, 1, 1, 0, 0, 0, 0);
-P0848_MAKE(storage, 1, 1, 0, 0, 0, 1);
-P0848_MAKE(storage, 1, 1, 0, 0, 1, 0);
-P0848_MAKE(storage, 1, 1, 0, 0, 1, 1);
-P0848_MAKE(storage, 1, 1, 0, 1, 0, 0);
-P0848_MAKE(storage, 1, 1, 0, 1, 0, 1);
-P0848_MAKE(storage, 1, 1, 0, 1, 1, 0);
-P0848_MAKE(storage, 1, 1, 0, 1, 1, 1);
-P0848_MAKE(storage, 1, 1, 1, 0, 0, 0);
-P0848_MAKE(storage, 1, 1, 1, 0, 0, 1);
-P0848_MAKE(storage, 1, 1, 1, 0, 1, 0);
-P0848_MAKE(storage, 1, 1, 1, 0, 1, 1);
-P0848_MAKE(storage, 1, 1, 1, 1, 0, 0);
-P0848_MAKE(storage, 1, 1, 1, 1, 0, 1);
-P0848_MAKE(storage, 1, 1, 1, 1, 1, 0);
-P0848_MAKE(storage, 1, 1, 1, 1, 1, 1);
+// Expand the 16 storage union configurations.
+P0848_MAKE(storage, 0, 0, 0, 0);
+P0848_MAKE(storage, 0, 0, 0, 1);
+P0848_MAKE(storage, 0, 0, 1, 0);
+P0848_MAKE(storage, 0, 0, 1, 1);
+P0848_MAKE(storage, 0, 1, 0, 0);
+P0848_MAKE(storage, 0, 1, 0, 1);
+P0848_MAKE(storage, 0, 1, 1, 0);
+P0848_MAKE(storage, 0, 1, 1, 1);
+P0848_MAKE(storage, 1, 0, 0, 0);
+P0848_MAKE(storage, 1, 0, 0, 1);
+P0848_MAKE(storage, 1, 0, 1, 0);
+P0848_MAKE(storage, 1, 0, 1, 1);
+P0848_MAKE(storage, 1, 1, 0, 0);
+P0848_MAKE(storage, 1, 1, 0, 1);
+P0848_MAKE(storage, 1, 1, 1, 0);
+P0848_MAKE(storage, 1, 1, 1, 1);
 
 #undef P0848_MAKE
 #undef CLANG_NEEDS_MONOSTATE
@@ -283,53 +229,9 @@ struct move_ctor<Base, false> : copy_ctor<Base>
   constexpr  move_ctor& operator=(move_ctor&&)      = default;
 };
 
-template <typename Base,
-          bool = std::is_trivially_copy_assignable_v<typename Base::value_type>>
-struct copy : move_ctor<Base> {
+template <typename Base>
+struct ops : move_ctor<Base> {
   using move_ctor<Base>::move_ctor;
-};
-
-template <typename Base>
-struct copy<Base, false> : move_ctor<Base>
-{
-  using move_ctor<Base>::move_ctor;
-
-  constexpr copy& operator=(const copy& d) {
-    return (this->on_copy(d), *this);
-  }
-
-  constexpr ~copy()                         = default;
-  constexpr  copy()                         = default;
-  constexpr  copy(const copy&)              = default;
-  constexpr  copy(copy&&)                   = default;
-  constexpr  copy& operator=(copy&&)        = default;
-};
-
-template <typename Base,
-          bool = std::is_trivially_move_assignable_v<typename Base::value_type>>
-struct move : copy<Base> {
-  using copy<Base>::copy;
-};
-
-template <typename Base>
-struct move<Base, false> : copy<Base>
-{
-  using copy<Base>::copy;
-
-  constexpr move& operator=(move&& d) {
-    return (this->on_move(std::move(d)), *this);
-  }
-
-  constexpr ~move()                       = default;
-  constexpr  move()                       = default;
-  constexpr  move(const move&)            = default;
-  constexpr  move(move&&)                 = default;
-  constexpr  move& operator=(const move&) = default;
-};
-
-template <typename Base>
-struct ops : move<Base> {
-  using move<Base>::move;
 };
 }
 
@@ -349,23 +251,38 @@ struct cvector_impl
   int n = 0;
 
   constexpr cvector_impl() = default;
+  constexpr cvector_impl(const cvector_impl&) = default;
+  constexpr cvector_impl(cvector_impl&&) = default;
 
-  template <typename... Ts>
+  template <std::convertible_to<T>... Ts>
   constexpr cvector_impl(Ts&&... ts) {
     static_assert(sizeof...(ts) <= N);
-    static_assert((std::is_convertible_v<Ts, T> && ...));
     (emplace_back(std::forward<Ts>(ts)), ...);
   }
 
-  template <typename... Ts>
+  template <std::convertible_to<T>... Ts>
   constexpr cvector_impl(std::in_place_t, Ts&&... ts)
       : cvector_impl(std::forward<Ts>(ts)...)
   {}
 
-  template <typename... Ts>
+  template <std::convertible_to<T>... Ts>
   constexpr cvector_impl(std::in_place_type_t<T>, Ts&&... ts)
       : cvector_impl(std::forward<Ts>(ts)...)
   {}
+
+  constexpr static bool triv_copy = std::is_trivially_copy_assignable_v<T>;
+  constexpr cvector_impl& operator=(const cvector_impl&) requires(triv_copy) = default;
+  constexpr cvector_impl& operator=(const cvector_impl& b) requires(!triv_copy) {
+    this->on_copy(b);
+    return *this;
+  }
+
+  constexpr static bool triv_move = std::is_trivially_move_assignable_v<T>;
+  constexpr cvector_impl& operator=(cvector_impl&&) requires(triv_move) = default;
+  constexpr cvector_impl& operator=(cvector_impl&& b) requires(!triv_move) {
+    this->on_move(std::move(b));
+    return *this;
+  }
 
   // Underlying data (not constexpr because of the reinterpret cast)
   const T* data() const { return reinterpret_cast<const T*>(&storage); }
@@ -494,7 +411,7 @@ struct cvector_impl
   // these to be members of the union itself, however if they're regular
   // members then clang complains when I use them because it has no active
   // union, and if they're friends then gcc crashes
-  // (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85576). So here they are.
+  // (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85576).
  private:
   template <typename... Ts>
   constexpr static T& construct(storage_type& s, Ts&&... ts)
@@ -569,9 +486,9 @@ struct cvector : P0848::ops<cvector_impl<T, N>>
   using P0848::ops<cvector_impl<T, N>>::ops;
 };
 
-template <typename T, typename... Ts>
+template <typename T, std::convertible_to<T>... Ts>
 cvector(std::in_place_t, T&&, Ts&&...) -> cvector<T, 1 + sizeof...(Ts)>;
 
-template <typename T, typename... Ts>
+template <typename T, std::convertible_to<T>... Ts>
 cvector(std::in_place_type_t<T>, Ts&&...) -> cvector<T, sizeof...(Ts)>;
 }
