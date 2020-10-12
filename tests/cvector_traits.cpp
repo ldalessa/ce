@@ -30,16 +30,22 @@
 
 #include "ce/cvector.hpp"
 
-// Just check to make sure we correctly propagate traits of T into cvector of
-// T.
+// This test file just instantiates a class template with the truth table of
+// trivial traits in order to make sure that a cvector of <T> has the same
+// traits as T itself, for all possible combinations.
+//
+// The cvector cannot be trivially constructible so that's not one that we'll
+// need to test.
 
+// Class template to instantiate.
 template <int dtor,
           int copy_ctor,
           int move_ctor,
           int copy_assign,
           int move_assign>
-struct Foo;
+struct T;
 
+// Trait template that will check the traits.
 template <typename T>
 struct check_traits
 {
@@ -51,21 +57,25 @@ struct check_traits
   static_assert(not (std::is_trivially_move_assignable_v<T> ^ std::is_trivially_move_assignable_v<vector>));
 };
 
-#define DTOR_0
-#define COPY_CTOR_0
-#define MOVE_CTOR_0
-#define COPY_0
-#define MOVE_0
+#define DTOR_0      constexpr ~T() = default;
+#define DTOR_1      constexpr ~T() {}
 
-#define DTOR_1      constexpr ~Foo() {}
-#define COPY_CTOR_1 constexpr  Foo(const Foo&) {}
-#define MOVE_CTOR_1 constexpr  Foo(Foo&&) {}
-#define COPY_1      constexpr  Foo& operator=(const Foo&) { return *this; }
-#define MOVE_1      constexpr  Foo& operator=(Foo&&)      { return *this; }
+#define COPY_CTOR_0 constexpr T(const T&) = default;
+#define COPY_CTOR_1 constexpr T(const T&) {}
+
+#define MOVE_CTOR_0 constexpr T(T&&) = default;
+#define MOVE_CTOR_1 constexpr T(T&&) {}
+
+#define COPY_0      constexpr T& operator=(const T&) = default;
+#define COPY_1      constexpr T& operator=(const T&) { return *this; }
+
+#define MOVE_0      constexpr T& operator=(T&&) = default;
+#define MOVE_1      constexpr T& operator=(T&&) { return *this; }
 
 #define MAKE_FOO(dtor, copy_ctor, move_ctor, copy, move)    \
   template <>                                               \
-  struct Foo<dtor, copy_ctor, move_ctor, copy, move> {      \
+  struct T<dtor, copy_ctor, move_ctor, copy, move> {        \
+    constexpr T() = default;                                \
     DTOR_##dtor;                                            \
     COPY_CTOR_##copy_ctor;                                  \
     MOVE_CTOR_##move_ctor;                                  \
@@ -78,7 +88,7 @@ struct check_traits
 
 #define MAKE_CHECK(dtor, copy_ctor, move_ctor, copy, move)              \
   MAKE_FOO(dtor, copy_ctor, move_ctor, copy, move);                     \
-  constexpr check_traits<Foo<dtor, copy_ctor, move_ctor, copy, move>> check##dtor##copy_ctor##move_ctor##copy##move;
+  constexpr check_traits<T<dtor, copy_ctor, move_ctor, copy, move>> check##dtor##copy_ctor##move_ctor##copy##move [[gnu::used]];
 
 MAKE_CHECK(0, 0, 0, 0, 0);
 MAKE_CHECK(0, 0, 0, 0, 1);
