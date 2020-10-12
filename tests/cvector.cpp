@@ -9,10 +9,6 @@ struct Foo {
   int a;
   mutable int b;
 
-  friend std::string to_string(const Foo& foo) {
-    return std::to_string(foo.a);
-  }
-
   // unit tests want this to work
   constexpr bool operator==(const Foo& rhs) const {
     return a == rhs.a;
