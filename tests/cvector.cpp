@@ -165,6 +165,40 @@ TEMPLATE_TEST_CASE("Write Access", "[cvector][write]", int, Foo) {
 }
 
 template <typename T>
+constexpr bool front() {
+  cvector<T, 3> a(2);
+  a[0] = T(1);
+  assert(a.front() == T(1));
+  a.front() = T(2);
+  assert(a.front() == T(2));
+  const cvector<T, 3> b = { std::in_place, 1, 2 };
+  assert(b.front() == T(1));
+  return true;
+}
+
+TEMPLATE_TEST_CASE("Front access", "[cvector][front]", int, Foo) {
+  static_assert(front<TestType>());
+  front<TestType>();
+}
+
+template <typename T>
+constexpr bool back() {
+  cvector<T, 3> a(1);
+  a[0] = T(1);
+  assert(a.back() == T(1));
+  a.back() = T(2);
+  assert(a.back() == T(2));
+  const cvector<T, 3> b = { std::in_place, 1, 2 };
+  assert(b.back() == T(2));
+  return true;
+}
+
+TEMPLATE_TEST_CASE("Back access", "[cvector][back]", int, Foo) {
+  static_assert(back<TestType>());
+  back<TestType>();
+}
+
+template <typename T>
 constexpr bool ctad_inplace() {
   cvector<T, 3> a = { std::in_place, 1, 2 };
   assert(size(a) == 2);

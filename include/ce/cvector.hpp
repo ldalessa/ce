@@ -159,19 +159,23 @@ struct cvector_impl
   }
 
   constexpr const T& front() const {
+    assert(size_ > 0);
     return storage_[0].t;
   }
 
   constexpr T& front() {
+    assert(size_ > 0);
     return storage_[0].t;
   }
 
   constexpr const T& back() const {
-    return storage_[size_].t;
+    assert(size_ > 0);
+    return storage_[size_ - 1].t;
   }
 
   constexpr T& back() {
-    return storage_[size_].t;
+    assert(size_ > 0);
+    return storage_[size_ - 1].t;
   }
 
   const T* data() const {
@@ -321,11 +325,11 @@ struct cvector_trivial {
     return storage_[i];
   }
 
-  constexpr const T& front() const { return storage_[0]; }
-  constexpr       T& front()       { return storage_[0]; }
+  constexpr const T& front() const { assert(size_ > 0); return storage_[0]; }
+  constexpr       T& front()       { assert(size_ > 0); return storage_[0]; }
 
-  constexpr const T& back() const { return storage_[size_]; }
-  constexpr       T& back()       { return storage_[size_]; }
+  constexpr const T& back() const { assert(size_ > 0); return storage_[size_ - 1]; }
+  constexpr       T& back()       { assert(size_ > 0); return storage_[size_ - 1]; }
 
   constexpr const T* data() const { return &storage_; }
   constexpr       T* data()       { return &storage_; }
