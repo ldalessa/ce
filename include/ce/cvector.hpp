@@ -28,8 +28,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
-
+// ----------------------------------------------------------------------------
 // A C++20 constexpr vector implementation.
 //
 // This is not an implementation of std::vector for constexpr context, but
@@ -40,10 +39,8 @@
 // were just a vector of `T`.
 //
 // The vector itself is mostly implemented in `cvector_impl`, but should be
-// accessed in user code via the `cvector` strong typedef. The rest of the file
-// contains support code to workaround missing P0848 in clang, as well as to
-// find some conservative point in the `constexpr array of unions` methodology
-// that both clang and gcc are happy with.
+// accessed in user code via the `cvector` strong typedef, which includes the
+// P0848 workarounds.
 //
 // Hopefully the API is fairly straightforward. The cvector supports CTAD much
 // like the std::vector, but does not provide any other sophisticated
@@ -66,198 +63,15 @@
 // the function declaration and assertion will be printed. I also like to do
 // some manual horizontal alignment where I feel like it looks more consistent.
 // **********************************
+#pragma once
 
+#include "P0848.hpp"
 #include <algorithm>
 #include <cassert>
 #include <concepts>
 #include <memory>
 
-namespace ce
-{
-// Everything in this namespace exists because clang has not implemented P0848
-// at the time that I'm writing this. The result is that we need a bunch of
-// extra nonsense to make sure that our storage type and vector don't
-// unintentionally restrict the set of `is_trivially_*` traits more than they
-// have to.
-namespace P0848
-{
-// The storage union is an integral part of our vector implementation. It wraps
-// a single instance of a `T` and allows us to allocate an array of them
-// without actually initializing any of them, which is what we want when `T` is
-// not `trivially_constructible`.
-//
-// We need 2^4 different versions of the union depending on the underlying
-// traits of the `T`. Unions do not participate in inheritance, so instead we
-// define the 16 partial specialization via set of P0848_MACRO expansions.
-template <typename T,
-          int = std::is_trivially_constructible_v<T>,
-          int = std::is_trivially_destructible_v<T>,
-          int = std::is_trivially_copy_constructible_v<T>,
-          int = std::is_trivially_move_constructible_v<T>>
-union storage;
-// {
-//   T t;
-//
-//   constexpr constructors
-//   cosntexpr assignment
-// }
-
-// A basic macro to protect a parameter from expansion.
-#define P0848_WRAP(x) x
-
-// These macros just pick either a defaulted or empty version of the relevant
-// constructor, based on the passed defaulted flag. None of the operators
-// directly interact with the underlying storage, we assume that the hosted
-// class deals with everything explicitly.
-#define P0848_MAKE_CTOR_1(type) constexpr type() = default
-#define P0848_MAKE_CTOR_0(type) constexpr type() {}
-#define P0848_MAKE_CTOR(defaulted, type)        \
-  P0848_MAKE_CTOR_##defaulted(P0848_WRAP(type))
-
-#define P0848_MAKE_DTOR_1(type) constexpr ~type() = default
-#define P0848_MAKE_DTOR_0(type) constexpr ~type() {}
-#define P0848_MAKE_DTOR(defaulted, type)        \
-  P0848_MAKE_DTOR_##defaulted(P0848_WRAP(type))
-
-#define P0848_MAKE_COPY_CTOR_1(type) constexpr type(const type&) = default
-#define P0848_MAKE_COPY_CTOR_0(type) constexpr type(const type& b) {}
-#define P0848_MAKE_COPY_CTOR(defaulted, type)           \
-  P0848_MAKE_COPY_CTOR_##defaulted(P0848_WRAP(type))
-
-#define P0848_MAKE_MOVE_CTOR_1(type) constexpr type(type&&) = default
-#define P0848_MAKE_MOVE_CTOR_0(type) constexpr type(type&&) {}
-#define P0848_MAKE_MOVE_CTOR(defaulted, type)           \
-  P0848_MAKE_MOVE_CTOR_##defaulted(P0848_WRAP(type))
-
-// Clang 10.0.1 on my Debian testing system wants monostate.
-#ifdef __clang__
-#define CLANG_NEEDS_MONOSTATE(id) struct {} id = {}
-#else
-#define CLANG_NEEDS_MONOSTATE(id)
-#endif
-
-// Expands into one of the storage union types.
-#define P0848_MAKE(type, triv_ctor, triv_dtor, triv_cctor, triv_mctor)  \
-  template <typename T>                                                 \
-  union type<T, triv_ctor, triv_dtor, triv_cctor, triv_mctor>           \
-  {                                                                     \
-    T t;                                                                \
-    CLANG_NEEDS_MONOSTATE(_);                                           \
-    P0848_MAKE_CTOR(triv_ctor,       P0848_WRAP(type));                 \
-    P0848_MAKE_DTOR(triv_dtor,       P0848_WRAP(type));                 \
-    P0848_MAKE_COPY_CTOR(triv_cctor, P0848_WRAP(type));                 \
-    P0848_MAKE_MOVE_CTOR(triv_mctor, P0848_WRAP(type));                 \
-                                                                        \
-    constexpr static bool triv_copy = std::is_trivially_copy_assignable_v<T>; \
-    constexpr type& operator=(const type&) requires(triv_copy) = default; \
-    constexpr type& operator=(const type&) requires(!triv_copy) {}      \
-                                                                        \
-    constexpr static bool triv_move = std::is_trivially_move_assignable_v<T>; \
-    constexpr type& operator=(type&&) requires(triv_move) = default;    \
-    constexpr type& operator=(type&&) requires(!triv_move) {}           \
-  }
-
-// Expand the 16 storage union configurations.
-P0848_MAKE(storage, 0, 0, 0, 0);
-P0848_MAKE(storage, 0, 0, 0, 1);
-P0848_MAKE(storage, 0, 0, 1, 0);
-P0848_MAKE(storage, 0, 0, 1, 1);
-P0848_MAKE(storage, 0, 1, 0, 0);
-P0848_MAKE(storage, 0, 1, 0, 1);
-P0848_MAKE(storage, 0, 1, 1, 0);
-P0848_MAKE(storage, 0, 1, 1, 1);
-P0848_MAKE(storage, 1, 0, 0, 0);
-P0848_MAKE(storage, 1, 0, 0, 1);
-P0848_MAKE(storage, 1, 0, 1, 0);
-P0848_MAKE(storage, 1, 0, 1, 1);
-P0848_MAKE(storage, 1, 1, 0, 0);
-P0848_MAKE(storage, 1, 1, 0, 1);
-P0848_MAKE(storage, 1, 1, 1, 0);
-P0848_MAKE(storage, 1, 1, 1, 1);
-
-#undef P0848_MAKE
-#undef CLANG_NEEDS_MONOSTATE
-#undef P0848_MAKE_MOVE
-#undef P0848_MAKE_COPY
-#undef P0848_MAKE_DTOR
-#undef P0848_MAKE_CTOR
-#undef P0848_WRAP
-
-// Destructor policy injects an explicit destructor if necessary.
-template <typename Base, bool = std::is_trivially_destructible_v<typename Base::value_type>>
-struct dtor : Base {
-  using Base::Base;
-};
-
-template <typename Base>
-struct dtor<Base, false> : Base
-{
-  using Base::Base;
-
-  constexpr ~dtor() {
-    this->on_dtor();
-  }
-
-  constexpr dtor()                       = default;
-  constexpr dtor(const dtor&)            = default;
-  constexpr dtor(dtor&&)                 = default;
-  constexpr dtor& operator=(const dtor&) = default;
-  constexpr dtor& operator=(dtor&&)      = default;
-};
-
-// Copy constructor policy forwards to the base class on_copy_ctor if
-// necessary.
-template <typename Base, bool = std::is_trivially_copy_constructible_v<typename Base::value_type>>
-struct copy_ctor : dtor<Base> {
-  using dtor<Base>::dtor;
-};
-
-template <typename Base>
-struct copy_ctor<Base, false> : dtor<Base>
-{
-  using dtor<Base>::dtor;
-
-  constexpr copy_ctor(const copy_ctor& d) {
-    this->on_copy_ctor(d);
-  }
-
-  constexpr ~copy_ctor()                            = default;
-  constexpr  copy_ctor()                            = default;
-  constexpr  copy_ctor(copy_ctor&&)                 = default;
-  constexpr  copy_ctor& operator=(const copy_ctor&) = default;
-  constexpr  copy_ctor& operator=(copy_ctor&&)      = default;
-};
-
-// Move constructor policy forwards to the base class on_move_ctor if
-// necessary.
-template <typename Base, bool = std::is_trivially_move_constructible_v<typename Base::value_type>>
-struct move_ctor : copy_ctor<Base> {
-  using copy_ctor<Base>::copy_ctor;
-};
-
-template <typename Base>
-struct move_ctor<Base, false> : copy_ctor<Base>
-{
-  using copy_ctor<Base>::copy_ctor;
-
-  constexpr move_ctor(move_ctor&& d) {
-    this->on_move_ctor(std::move(d));
-  }
-
-  constexpr ~move_ctor()                            = default;
-  constexpr  move_ctor()                            = default;
-  constexpr  move_ctor(const move_ctor&)            = default;
-  constexpr  move_ctor& operator=(const move_ctor&) = default;
-  constexpr  move_ctor& operator=(move_ctor&&)      = default;
-};
-
-// Injects P0848 operations into Base as needed.
-template <typename Base>
-struct ops : move_ctor<Base> {
-  using move_ctor<Base>::move_ctor;
-};
-}
-
+namespace ce {
 // The core vector implementation.
 //
 // This class template contains the definition of the vector's data and all of
@@ -401,51 +215,14 @@ struct cvector_impl
     return std::move(storage[--n].t);
   }
 
-  // A contiguous iterator template class.
-  //
-  // This is a simple iterator implementation that captures a pointer to some
-  // "array-like" type (a random access type that can be indexed via
-  // operator[]), and indexes it. The only reason we need it is as a facade to
-  // the `T` underlying the union storage type.
-  template <typename U>
-  struct it {
-    using iterator_category = std::random_access_iterator_tag;
-    using      element_type = std::decay_t<decltype(std::declval<U>()[0])>;
-
-    U*  p = nullptr;
-    int i = 0;
-
-    constexpr auto& operator[](int n) const { return (*p)[i + n]; }
-    constexpr auto& operator*()       const { return (*p)[i]; }
-    constexpr auto* operator->()      const { return std::addressof((*p)[i]); }
-
-    constexpr it& operator++() { return (++i, *this); }
-    constexpr it& operator--() { return (--i, *this); }
-
-    constexpr it operator++(int) { return {p, i++}; }
-    constexpr it operator--(int) { return {p, i--}; }
-
-    constexpr it& operator+=(int n) { return (i += n, *this); }
-    constexpr it& operator-=(int n) { return (i -= n, *this); }
-
-    constexpr friend it operator+(const it& a, int n) { return {a.p, a.i + n}; }
-    constexpr friend it operator+(int n, const it& a) { return {a.p, n + a.i}; }
-    constexpr friend it operator-(const it& a, int n) { return {a.p, a.i - n}; }
-
-    constexpr bool operator==(const it& b)  const { return i == b.i; }
-    constexpr auto operator<=>(const it& b) const { return i <=> b.i; }
-
-    constexpr int operator-(const it& b) const { return i - b.i; }
-  };
-
-  using iterator = it<cvector_impl>;
-  using const_iterator = it<const cvector_impl>;
-
   // Iterators.
-  constexpr const_iterator begin() const { return {this, 0}; }
-  constexpr       iterator begin()       { return {this, 0}; }
-  constexpr const_iterator   end() const { return {this, this->n}; }
-  constexpr       iterator   end()       { return {this, this->n}; }
+  using iterator = P0848::storage_iterator<storage_type>;
+  using const_iterator = P0848::storage_iterator<const storage_type>;
+
+  constexpr const_iterator begin() const { return {storage}; }
+  constexpr       iterator begin()       { return {storage}; }
+  constexpr const_iterator   end() const { return {storage + n}; }
+  constexpr       iterator   end()       { return {storage + n}; }
 
   constexpr auto rbegin() const { return std::reverse_iterator(end()); }
   constexpr auto rbegin()       { return std::reverse_iterator(end()); }
