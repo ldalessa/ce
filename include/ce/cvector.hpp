@@ -293,7 +293,10 @@ struct cvector_impl
 
 // Trivial types are common and can be represented as a simple array.
 template <typename T, int N>
-struct cvector_trivial {
+struct cvector_trivial
+{
+  using value_type = T;
+
  private:
   T storage_[N] = {};
   int  size_    = 0;
