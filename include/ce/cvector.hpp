@@ -80,21 +80,22 @@ namespace ce {
 template <typename T, int N>
 struct cvector_impl
 {
-  using   value_type = T;
+  using value_type = T;
+
+ private:
   using storage_type = P0848::storage<T>;
+  storage_type storage_[N] = {};
+  int size_ = 0;
 
-  // The storage array and current size.
-  storage_type storage[N] = {};
-  int n = 0;
-
+ public:
   constexpr cvector_impl()                    = default;
   constexpr cvector_impl(const cvector_impl&) = default;
   constexpr cvector_impl(cvector_impl&&)      = default;
 
-  constexpr cvector_impl(int n) : n(n) { assert(0 <= n && n <= N);
+  constexpr cvector_impl(int n) : size_(n) { assert(0 <= n && n <= N);
     assert(std::is_default_constructible_v<T> || n == 0);
-    for (int i = 0; i < n; ++i) {
-      construct(storage[i]);
+    for (int i = 0; i < size_; ++i) {
+      construct(storage_[i]);
     }
   }
 
@@ -115,16 +116,16 @@ struct cvector_impl
   constexpr cvector_impl& operator=(const cvector_impl&) requires(triv_copy) = default;
   constexpr cvector_impl& operator=(const cvector_impl& b) requires(!triv_copy) {
     int i = 0;
-    for (; i < std::min(n, b.n); ++i) {
-      storage[i].t = b.storage[i].t;
+    for (; i < std::min(size_, b.size_); ++i) {
+      storage_[i].t = b.storage_[i].t;
     }
-    for (; i < b.n; ++i) {
-      construct(storage[i], b.storage[i].t);
+    for (; i < b.size_; ++i) {
+      construct(storage_[i], b.storage_[i].t);
     }
-    for (; i < n; ++i) {
-      destroy(storage[i]);
+    for (; i < size_; ++i) {
+      destroy(storage_[i]);
     }
-    n = b.n;
+    size_ = b.size_;
     return *this;
   }
 
@@ -134,60 +135,60 @@ struct cvector_impl
   constexpr cvector_impl& operator=(cvector_impl&&) requires(triv_move) = default;
   constexpr cvector_impl& operator=(cvector_impl&& b) requires(!triv_move) {
     int i = 0;
-    for (; i < std::min(n, b.n); ++i) {
-      storage[i].t = std::move(b.storage[i]).t;
+    for (; i < std::min(size_, b.size_); ++i) {
+      storage_[i].t = std::move(b.storage_[i]).t;
     }
-    for (; i < b.n; ++i) {
-      construct(storage[i], std::move(b.storage[i]).t);
+    for (; i < b.size_; ++i) {
+      construct(storage_[i], std::move(b.storage_[i]).t);
     }
-    for (; i < n; ++i) {
-      destroy(storage[i]);
+    for (; i < size_; ++i) {
+      destroy(storage_[i]);
     }
-    n = std::exchange(b.n, 0);
+    size_ = std::exchange(b.size_, 0);
     return *this;
   }
 
   // Element access.
-  constexpr const T& operator[](int i) const { assert(0 <= i && i < n);
-    return storage[i].t;
+  constexpr const T& operator[](int i) const { assert(0 <= i && i < size_);
+    return storage_[i].t;
   }
 
-  constexpr T& operator[](int i) { assert(0 <= i && i < n);
-    return storage[i].t;
+  constexpr T& operator[](int i) { assert(0 <= i && i < size_);
+    return storage_[i].t;
   }
 
   constexpr const T& front() const {
-    return storage[0].t;
+    return storage_[0].t;
   }
 
   constexpr T& front() {
-    return storage[0].t;
+    return storage_[0].t;
   }
 
   constexpr const T& back() const {
-    return storage[n].t;
+    return storage_[size_].t;
   }
 
   constexpr T& back() {
-    return storage[n].t;
+    return storage_[size_].t;
   }
 
   const T* data() const {
-    return reinterpret_cast<const T*>(&storage);
+    return reinterpret_cast<const T*>(&storage_);
   }
 
   T* data() {
-    return reinterpret_cast<T*>(&storage);
+    return reinterpret_cast<T*>(&storage_);
   }
 
   // Iterators.
   using iterator = P0848::storage_iterator<storage_type>;
   using const_iterator = P0848::storage_iterator<const storage_type>;
 
-  constexpr const_iterator begin() const { return {storage}; }
-  constexpr       iterator begin()       { return {storage}; }
-  constexpr const_iterator   end() const { return {storage + n}; }
-  constexpr       iterator   end()       { return {storage + n}; }
+  constexpr const_iterator begin() const { return {storage_}; }
+  constexpr       iterator begin()       { return {storage_}; }
+  constexpr const_iterator   end() const { return {storage_ + size_}; }
+  constexpr       iterator   end()       { return {storage_ + size_}; }
 
   constexpr auto rbegin() const { return std::reverse_iterator(end()); }
   constexpr auto rbegin()       { return std::reverse_iterator(end()); }
@@ -196,11 +197,11 @@ struct cvector_impl
 
   // Capacity
   constexpr int empty() const {
-    return n == 0;
+    return size_ == 0;
   }
 
   constexpr int size() const {
-    return n;
+    return size_;
   }
 
   constexpr static int max_size() {
@@ -218,35 +219,35 @@ struct cvector_impl
   }
 
   constexpr friend int size(const cvector_impl& v) {
-    return v.n;
+    return v.size_;
   }
 
   // Modifiers
   template <typename... Ts>
-  constexpr T& emplace_back(Ts&&... ts) { assert(n < N);
+  constexpr T& emplace_back(Ts&&... ts) { assert(size_ < N);
     static_assert(std::is_constructible_v<T, Ts...>);
-    return construct(storage[n++], std::forward<Ts>(ts)...);
+    return construct(storage_[size_++], std::forward<Ts>(ts)...);
   }
 
-  constexpr T& push_back(const T& t) { assert(n < N);
-    return construct(storage[n++], t);
+  constexpr T& push_back(const T& t) { assert(size_ < N);
+    return construct(storage_[size_++], t);
   }
 
-  constexpr T& push_back(T&& t) { assert(n < N);
-    return construct(storage[n++], std::move(t));
+  constexpr T& push_back(T&& t) { assert(size_ < N);
+    return construct(storage_[size_++], std::move(t));
   }
 
-  constexpr T pop_back() { assert(n > 0);
-    return std::move(storage[--n].t);
+  constexpr T pop_back() { assert(size_ > 0);
+    return std::move(storage_[--size_].t);
   }
 
   constexpr void resize(int i) { assert(0 <= i && i <= N);
-    for (int j = i; j < n; ++j) {
-      destroy(storage[j]);                      // shrinking
+    for (int j = i; j < size_; ++j) {
+      destroy(storage_[j]);                      // shrinking
     }
-    for (int j = n; j < i; ++j) {
+    for (int j = size_; j < i; ++j) {
       if constexpr (std::is_default_constructible_v<T>) {
-        construct(storage[j]);                  // growing
+        construct(storage_[j]);                  // growing
       }
       else {
         // Can't increase size without default constructor, using the trait
@@ -257,15 +258,12 @@ struct cvector_impl
         assert(std::is_default_constructible_v<T>);
       }
     }
-    n = i;
+    size_ = i;
   }
 
   constexpr void clear() {
     resize(0);
   }
-
-  // Helpers to manage the lifetime of storage elements.
- private:
 
   // Protected handlers are called by our subclasses as needed in order to
   // clear, copy construct, and/or move construct the array properly.
@@ -275,16 +273,16 @@ struct cvector_impl
   }
 
   constexpr void on_copy_ctor(const cvector_impl& b) {
-    for (n = 0; n < b.n; ++n) {
-      construct(storage[n], b.storage[n].t);
+    for (; size_ < b.size_; ++size_) {
+      construct(storage_[size_], b.storage_[size_].t);
     }
   }
 
   constexpr void on_move_ctor(cvector_impl&& b) {
-    for (n = 0; n < b.n; ++n) {
-      construct(storage[n], std::move(b.storage[n]).t);
+    for (; size_ < b.size_; ++size_) {
+      construct(storage_[size_], std::move(b.storage_[size_]).t);
     }
-    b.n = 0;
+    b.size_ = 0;
   }
 };
 

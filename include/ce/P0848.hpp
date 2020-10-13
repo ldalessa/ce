@@ -152,7 +152,6 @@ constexpr static void destroy(storage<T, A, B, C, D>& s) {
   std::destroy_at(std::addressof(s.t));
 }
 
-
 // A basic macro to protect a parameter from expansion.
 #define P0848_WRAP(x) x
 
