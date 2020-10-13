@@ -35,19 +35,15 @@
 // This is not an implementation of std::vector for constexpr context, but
 // simply an implementation of a constexpr vector with a fixed capacity. The
 // only thing special about it is that it is intended to properly support types
-// without default constructors, while preserving the `is_trivially_*` set of
-// traits from its storage type and providing contiguous iterators as if it were
-// just an array of `T`.
+// without trivial ctor/dtor/assign, while preserving the `is_trivially_*` set
+// of traits from its storage type and providing contiguous iterators as if it
+// were just a vector of `T`.
 //
 // The vector itself is mostly implemented in `cvector_impl`, but should be
-// accessed in user code via the `cvector` strong typedef (technically more than
-// just a typedef, but only barely more). The rest of the file contains support
-// code to workaround missing P0848 in clang, as well as to find some
-// conservative point in the `constexpr array of unions` methodology that both
-// clang and gcc are happy with.
-//
-// It _does_ rely on concepts, both in the compiler and the <concepts> header,
-// however with some extra work the header could be traded for <type_traits>.
+// accessed in user code via the `cvector` strong typedef. The rest of the file
+// contains support code to workaround missing P0848 in clang, as well as to
+// find some conservative point in the `constexpr array of unions` methodology
+// that both clang and gcc are happy with.
 //
 // Hopefully the API is fairly straightforward. The cvector supports CTAD much
 // like the std::vector, but does not provide any other sophisticated
@@ -64,13 +60,11 @@
 //   return v;
 // }
 //
-// The vector is only lightly tested.
-//
 // ******** NOTE ABOUT STYLE ********
-// I assert preconditions on the same line as the function declaration. This
-// produces useful text output from constexpr errors, as both the function
-// declaration and assertion will be printed. I also like to do some manual
-// horizontal alignment where I feel like it looks more consistent.
+// I try to assert preconditions on the same line as the function
+// declaration. This produces useful text output from constexpr errors, as both
+// the function declaration and assertion will be printed. I also like to do
+// some manual horizontal alignment where I feel like it looks more consistent.
 // **********************************
 
 #include <algorithm>
@@ -80,25 +74,21 @@
 
 namespace ce
 {
-// Everything in this namespace exists because clang has not yet implemented
-// P0848 at the time that I'm writing this. The result is that we need a bunch
-// of extra nonsense to make sure that our storage type and vector don't
+// Everything in this namespace exists because clang has not implemented P0848
+// at the time that I'm writing this. The result is that we need a bunch of
+// extra nonsense to make sure that our storage type and vector don't
 // unintentionally restrict the set of `is_trivially_*` traits more than they
-// have to. I believe they are all preserved other than the fact that the
-// vector is not `trivially_constructible` because it has default initializers
-// for its data.
+// have to.
 namespace P0848
 {
-
 // The storage union is an integral part of our vector implementation. It wraps
 // a single instance of a `T` and allows us to allocate an array of them
 // without actually initializing any of them, which is what we want when `T` is
 // not `trivially_constructible`.
 //
 // We need 2^4 different versions of the union depending on the underlying
-// traits of the `T`. We can't do fancy meta-programming with the union because
-// we don't have inheritance available, so instead we define the 16 partial
-// specialization via set of P0848_MACRO expansions.
+// traits of the `T`. Unions do not participate in inheritance, so instead we
+// define the 16 partial specialization via set of P0848_MACRO expansions.
 template <typename T,
           int = std::is_trivially_constructible_v<T>,
           int = std::is_trivially_destructible_v<T>,
@@ -193,8 +183,8 @@ P0848_MAKE(storage, 1, 1, 1, 1);
 #undef P0848_MAKE_CTOR
 #undef P0848_WRAP
 
-template <typename Base,
-          bool = std::is_trivially_destructible_v<typename Base::value_type>>
+// Destructor policy injects an explicit destructor if necessary.
+template <typename Base, bool = std::is_trivially_destructible_v<typename Base::value_type>>
 struct dtor : Base {
   using Base::Base;
 };
@@ -215,8 +205,9 @@ struct dtor<Base, false> : Base
   constexpr dtor& operator=(dtor&&)      = default;
 };
 
-template <typename Base,
-          bool = std::is_trivially_copy_constructible_v<typename Base::value_type>>
+// Copy constructor policy forwards to the base class on_copy_ctor if
+// necessary.
+template <typename Base, bool = std::is_trivially_copy_constructible_v<typename Base::value_type>>
 struct copy_ctor : dtor<Base> {
   using dtor<Base>::dtor;
 };
@@ -237,8 +228,9 @@ struct copy_ctor<Base, false> : dtor<Base>
   constexpr  copy_ctor& operator=(copy_ctor&&)      = default;
 };
 
-template <typename Base,
-          bool = std::is_trivially_move_constructible_v<typename Base::value_type>>
+// Move constructor policy forwards to the base class on_move_ctor if
+// necessary.
+template <typename Base, bool = std::is_trivially_move_constructible_v<typename Base::value_type>>
 struct move_ctor : copy_ctor<Base> {
   using copy_ctor<Base>::copy_ctor;
 };
@@ -259,6 +251,7 @@ struct move_ctor<Base, false> : copy_ctor<Base>
   constexpr  move_ctor& operator=(move_ctor&&)      = default;
 };
 
+// Injects P0848 operations into Base as needed.
 template <typename Base>
 struct ops : move_ctor<Base> {
   using move_ctor<Base>::move_ctor;
@@ -268,8 +261,8 @@ struct ops : move_ctor<Base> {
 // The core vector implementation.
 //
 // This class template contains the definition of the vector's data and all of
-// its API with the exception of the various special members (constructors,
-// assignments) that we want to provide.
+// its API. It provides on_dtor, on_copy_ctor, and on_move_ctor, which allow the
+// P0848 machinery to work.
 template <typename T, int N>
 struct cvector_impl
 {
@@ -412,12 +405,8 @@ struct cvector_impl
   //
   // This is a simple iterator implementation that captures a pointer to some
   // "array-like" type (a random access type that can be indexed via
-  // operator[]), and indexes it. The only reason we need it is to present a
-  // view of our contiguous storage union array as if it was a contiguous `T`
-  // array.
-  //
-  // It's defined as a template so that we can use it for both our normal and
-  // const iterator implementation by simply changing U.
+  // operator[]), and indexes it. The only reason we need it is as a facade to
+  // the `T` underlying the union storage type.
   template <typename U>
   struct it {
     using iterator_category = std::random_access_iterator_tag;
@@ -463,17 +452,13 @@ struct cvector_impl
   constexpr auto   rend() const { return std::reverse_iterator(begin()); }
   constexpr auto   rend()       { return std::reverse_iterator(begin()); }
 
-  // Helpers to manage the lifetime of storage elements. In truth, I'd like
-  // these to be members of the union itself, however if they're regular
-  // members then clang complains when I use them because it has no active
-  // union, and if they're friends then gcc crashes
-  // (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85576).
+  // Helpers to manage the lifetime of storage elements.
  private:
   template <typename... Ts>
   constexpr static T& construct(storage_type& s, Ts&&... ts)
   {
     static_assert(std::is_constructible_v<T, Ts...>);
-    // clang is correct, but gcc isn't ready at the time I'm doing this
+    // clang is correct, but gcc doesn't yet support
 #ifdef __clang__
     return *std::construct_at(std::addressof(s.t), std::forward<Ts>(ts)...);
 #else
