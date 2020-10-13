@@ -29,6 +29,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ce/cvector.hpp"
+#include <catch2/catch_all.hpp>
 
 // This test file just instantiates a class template with the truth table of
 // trivial traits in order to make sure that a cvector of <T> has the same
@@ -45,18 +46,6 @@ template <int dtor,
           int move_assign>
 struct T;
 
-// Trait template that will check the traits.
-template <typename T>
-struct check_traits
-{
-  using vector = ce::cvector<T, 8>;
-  static_assert(not (std::is_trivially_destructible_v<T> ^ std::is_trivially_destructible_v<vector>));
-  static_assert(not (std::is_trivially_copy_constructible_v<T> ^ std::is_trivially_copy_constructible_v<vector>));
-  static_assert(not (std::is_trivially_move_constructible_v<T> ^ std::is_trivially_move_constructible_v<vector>));
-  static_assert(not (std::is_trivially_copy_assignable_v<T> ^ std::is_trivially_copy_assignable_v<vector>));
-  static_assert(not (std::is_trivially_move_assignable_v<T> ^ std::is_trivially_move_assignable_v<vector>));
-};
-
 #define DTOR_0      constexpr ~T() = default;
 #define DTOR_1      constexpr ~T() {}
 
@@ -72,7 +61,7 @@ struct check_traits
 #define MOVE_0      constexpr T& operator=(T&&) = default;
 #define MOVE_1      constexpr T& operator=(T&&) { return *this; }
 
-#define MAKE_FOO(dtor, copy_ctor, move_ctor, copy, move)    \
+#define MAKE_T(dtor, copy_ctor, move_ctor, copy, move)      \
   template <>                                               \
   struct T<dtor, copy_ctor, move_ctor, copy, move> {        \
     constexpr T() = default;                                \
@@ -83,42 +72,82 @@ struct check_traits
     MOVE_##move;                                            \
   }
 
+MAKE_T(0, 0, 0, 0, 0);
+MAKE_T(0, 0, 0, 0, 1);
+MAKE_T(0, 0, 0, 1, 0);
+MAKE_T(0, 0, 0, 1, 1);
+MAKE_T(0, 0, 1, 0, 0);
+MAKE_T(0, 0, 1, 0, 1);
+MAKE_T(0, 0, 1, 1, 0);
+MAKE_T(0, 0, 1, 1, 1);
+MAKE_T(0, 1, 0, 0, 0);
+MAKE_T(0, 1, 0, 0, 1);
+MAKE_T(0, 1, 0, 1, 0);
+MAKE_T(0, 1, 0, 1, 1);
+MAKE_T(0, 1, 1, 0, 0);
+MAKE_T(0, 1, 1, 0, 1);
+MAKE_T(0, 1, 1, 1, 0);
+MAKE_T(0, 1, 1, 1, 1);
+MAKE_T(1, 0, 0, 0, 0);
+MAKE_T(1, 0, 0, 0, 1);
+MAKE_T(1, 0, 0, 1, 0);
+MAKE_T(1, 0, 0, 1, 1);
+MAKE_T(1, 0, 1, 0, 0);
+MAKE_T(1, 0, 1, 0, 1);
+MAKE_T(1, 0, 1, 1, 0);
+MAKE_T(1, 0, 1, 1, 1);
+MAKE_T(1, 1, 0, 0, 0);
+MAKE_T(1, 1, 0, 0, 1);
+MAKE_T(1, 1, 0, 1, 0);
+MAKE_T(1, 1, 0, 1, 1);
+MAKE_T(1, 1, 1, 0, 0);
+MAKE_T(1, 1, 1, 0, 1);
+MAKE_T(1, 1, 1, 1, 0);
+MAKE_T(1, 1, 1, 1, 1);
 
-#define WRAP(x) x
+TEMPLATE_TEST_CASE_SIG("Check trait propagation", "[cvector][traits]",
+                       ((int dtor, int copy_ctor, int move_ctor, int copy, int move), dtor, copy_ctor, move_ctor, copy, move),
+                       (0, 0, 0, 0, 0),
+                       (0, 0, 0, 0, 1),
+                       (0, 0, 0, 1, 0),
+                       (0, 0, 0, 1, 1),
+                       (0, 0, 1, 0, 0),
+                       (0, 0, 1, 0, 1),
+                       (0, 0, 1, 1, 0),
+                       (0, 0, 1, 1, 1),
 
-#define MAKE_CHECK(dtor, copy_ctor, move_ctor, copy, move)              \
-  MAKE_FOO(dtor, copy_ctor, move_ctor, copy, move);                     \
-  constexpr check_traits<T<dtor, copy_ctor, move_ctor, copy, move>> check##dtor##copy_ctor##move_ctor##copy##move [[gnu::used]];
+                       (0, 1, 0, 0, 0),
+                       (0, 1, 0, 0, 1),
+                       (0, 1, 0, 1, 0),
+                       (0, 1, 0, 1, 1),
+                       (0, 1, 1, 0, 0),
+                       (0, 1, 1, 0, 1),
+                       (0, 1, 1, 1, 0),
+                       (0, 1, 1, 1, 1),
 
-MAKE_CHECK(0, 0, 0, 0, 0);
-MAKE_CHECK(0, 0, 0, 0, 1);
-MAKE_CHECK(0, 0, 0, 1, 0);
-MAKE_CHECK(0, 0, 0, 1, 1);
-MAKE_CHECK(0, 0, 1, 0, 0);
-MAKE_CHECK(0, 0, 1, 0, 1);
-MAKE_CHECK(0, 0, 1, 1, 0);
-MAKE_CHECK(0, 0, 1, 1, 1);
-MAKE_CHECK(0, 1, 0, 0, 0);
-MAKE_CHECK(0, 1, 0, 0, 1);
-MAKE_CHECK(0, 1, 0, 1, 0);
-MAKE_CHECK(0, 1, 0, 1, 1);
-MAKE_CHECK(0, 1, 1, 0, 0);
-MAKE_CHECK(0, 1, 1, 0, 1);
-MAKE_CHECK(0, 1, 1, 1, 0);
-MAKE_CHECK(0, 1, 1, 1, 1);
-MAKE_CHECK(1, 0, 0, 0, 0);
-MAKE_CHECK(1, 0, 0, 0, 1);
-MAKE_CHECK(1, 0, 0, 1, 0);
-MAKE_CHECK(1, 0, 0, 1, 1);
-MAKE_CHECK(1, 0, 1, 0, 0);
-MAKE_CHECK(1, 0, 1, 0, 1);
-MAKE_CHECK(1, 0, 1, 1, 0);
-MAKE_CHECK(1, 0, 1, 1, 1);
-MAKE_CHECK(1, 1, 0, 0, 0);
-MAKE_CHECK(1, 1, 0, 0, 1);
-MAKE_CHECK(1, 1, 0, 1, 0);
-MAKE_CHECK(1, 1, 0, 1, 1);
-MAKE_CHECK(1, 1, 1, 0, 0);
-MAKE_CHECK(1, 1, 1, 0, 1);
-MAKE_CHECK(1, 1, 1, 1, 0);
-MAKE_CHECK(1, 1, 1, 1, 1);
+                       (1, 0, 0, 0, 0),
+                       (1, 0, 0, 0, 1),
+                       (1, 0, 0, 1, 0),
+                       (1, 0, 0, 1, 1),
+                       (1, 0, 1, 0, 0),
+                       (1, 0, 1, 0, 1),
+                       (1, 0, 1, 1, 0),
+                       (1, 0, 1, 1, 1),
+
+                       (1, 1, 0, 0, 0),
+                       (1, 1, 0, 0, 1),
+                       (1, 1, 0, 1, 0),
+                       (1, 1, 0, 1, 1),
+                       (1, 1, 1, 0, 0),
+                       (1, 1, 1, 0, 1),
+                       (1, 1, 1, 1, 0),
+                       (1, 1, 1, 1, 1))
+{
+  using U = T<dtor, copy_ctor, move_ctor, copy, move>;
+  using V = ce::cvector<U, 8>;
+  static_assert(not (std::is_trivially_destructible_v<U> ^ std::is_trivially_destructible_v<V>));
+  static_assert(not (std::is_trivially_copy_constructible_v<U> ^ std::is_trivially_copy_constructible_v<V>));
+  static_assert(not (std::is_trivially_move_constructible_v<U> ^ std::is_trivially_move_constructible_v<V>));
+  static_assert(not (std::is_trivially_copy_assignable_v<U> ^ std::is_trivially_copy_assignable_v<V>));
+  static_assert(not (std::is_trivially_move_assignable_v<U> ^ std::is_trivially_move_assignable_v<V>));
+}
