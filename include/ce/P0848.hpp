@@ -126,18 +126,25 @@ template <typename T,
           int = std::is_trivially_destructible_v<T>,
           int = std::is_trivially_copy_constructible_v<T>,
           int = std::is_trivially_move_constructible_v<T>>
-union storage;
-// {
+union storage; // {
 //   T t;
-//
-//   constexpr constructors
-//   cosntexpr assignment
+//   using stored_type = T;
 // }
 
+template <typename>
+struct is_storage_trait : std::false_type {};
+
+template <typename T, int A, int B, int C, int D>
+struct is_storage_trait<storage<T, A, B, C, D>> : std::true_type {};
+
+template <typename T>
+concept is_storage = is_storage_trait<T>::value;
+
 // Wrappers for constructing and destructing the stored element.
-template <typename T, int A, int B, int C, int D, typename... Ts>
-constexpr static T& construct(storage<T, A, B, C, D>& s, Ts&&... ts)
+template <is_storage U, typename... Ts>
+constexpr static auto& construct(U& s, Ts&&... ts)
 {
+  using T = typename U::stored_type;
   static_assert(std::is_constructible_v<T, Ts...>);
   // clang is correct, but gcc doesn't yet support
 #ifdef __clang__
@@ -145,6 +152,14 @@ constexpr static T& construct(storage<T, A, B, C, D>& s, Ts&&... ts)
 #else
   return s.t = T(std::forward<Ts>(ts)...);
 #endif
+}
+
+constexpr static auto& construct(is_storage auto& s, is_storage auto const& t) {
+  return construct(s, t.t);
+}
+
+constexpr static auto& construct(is_storage auto& s, is_storage auto&& t) {
+  return construct(s, std::move(t).t);
 }
 
 template <typename T, int A, int B, int C, int D>
@@ -191,7 +206,7 @@ constexpr static void destroy(storage<T, A, B, C, D>& s) {
   template <typename T>                                                 \
   union type<T, triv_ctor, triv_dtor, triv_cctor, triv_mctor>           \
   {                                                                     \
-    using storage_type = T;                                             \
+    using stored_type = T;                                              \
     T t;                                                                \
     CLANG_NEEDS_MONOSTATE(_);                                           \
     P0848_MAKE_CTOR(triv_ctor,       P0848_WRAP(type));                 \
@@ -238,7 +253,7 @@ P0848_MAKE(storage, 1, 1, 1, 1);
 template <typename U>
 struct storage_iterator {
   using iterator_category = std::random_access_iterator_tag;
-  using      element_type = typename U::storage_type;
+  using      element_type = typename U::stored_type;
 
   U* ptr = nullptr;
 

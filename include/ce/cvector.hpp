@@ -120,7 +120,7 @@ struct cvector_impl
       storage_[i].t = b.storage_[i].t;
     }
     for (; i < b.size_; ++i) {
-      construct(storage_[i], b.storage_[i].t);
+      construct(storage_[i], b.storage_[i]);
     }
     for (; i < size_; ++i) {
       destroy(storage_[i]);
@@ -139,7 +139,7 @@ struct cvector_impl
       storage_[i].t = std::move(b.storage_[i]).t;
     }
     for (; i < b.size_; ++i) {
-      construct(storage_[i], std::move(b.storage_[i]).t);
+      construct(storage_[i], std::move(b.storage_[i]));
     }
     for (; i < size_; ++i) {
       destroy(storage_[i]);
@@ -274,13 +274,13 @@ struct cvector_impl
 
   constexpr void on_copy_ctor(const cvector_impl& b) {
     for (; size_ < b.size_; ++size_) {
-      construct(storage_[size_], b.storage_[size_].t);
+      construct(storage_[size_], b.storage_[size_]);
     }
   }
 
   constexpr void on_move_ctor(cvector_impl&& b) {
     for (; size_ < b.size_; ++size_) {
-      construct(storage_[size_], std::move(b.storage_[size_]).t);
+      construct(storage_[size_], std::move(b.storage_[size_]));
     }
     b.size_ = 0;
   }
