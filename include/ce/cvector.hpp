@@ -83,7 +83,8 @@ struct cvector_impl
   using value_type = T;
 
  private:
-  using storage_type = P0848::storage<T>;
+  // using storage_type = P0848::storage<T>;
+  using storage_type = P0848::storage_type<T>;
   storage_type storage_[N] = {};
   int size_ = 0;
 
@@ -182,8 +183,8 @@ struct cvector_impl
   }
 
   // Iterators.
-  using iterator = P0848::storage_iterator<storage_type>;
-  using const_iterator = P0848::storage_iterator<const storage_type>;
+  using iterator = P0848::storage_iterator_type<storage_type>;
+  using const_iterator = P0848::storage_iterator_type<const storage_type>;
 
   constexpr const_iterator begin() const { return {storage_}; }
   constexpr       iterator begin()       { return {storage_}; }
@@ -241,13 +242,13 @@ struct cvector_impl
     return std::move(storage_[--size_].t);
   }
 
-  constexpr void resize(int i) { assert(0 <= i && i <= N);
-    for (int j = i; j < size_; ++j) {
-      destroy(storage_[j]);                      // shrinking
+  constexpr void resize(int n) { assert(0 <= n && n <= N);
+    for (int i = n; i < size_; ++i) {
+      destroy(storage_[i]);                      // shrinking
     }
-    for (int j = size_; j < i; ++j) {
+    for (int i = size_; i < n; ++i) {
       if constexpr (std::is_default_constructible_v<T>) {
-        construct(storage_[j]);                  // growing
+        construct(storage_[i]);                  // growing
       }
       else {
         // Can't increase size without default constructor, using the trait
@@ -258,7 +259,7 @@ struct cvector_impl
         assert(std::is_default_constructible_v<T>);
       }
     }
-    size_ = i;
+    size_ = n;
   }
 
   constexpr void clear() {
@@ -286,11 +287,110 @@ struct cvector_impl
   }
 };
 
+// Trivial types are common and can be represented as a simple array.
+template <typename T, int N>
+struct cvector_trivial {
+ private:
+  T storage_[N] = {};
+  int  size_    = 0;
+
+ public:
+  constexpr cvector_trivial() = default;
+
+  constexpr cvector_trivial(int n) : size_(n) {
+  }
+
+  template <std::convertible_to<T>... Ts>
+  constexpr cvector_trivial(std::in_place_t, Ts&&... ts)
+      : storage_ { std::forward<T>(ts)... }
+      ,    size_ { sizeof...(ts) }
+  {
+  }
+
+  template <std::convertible_to<T>... Ts>
+  constexpr cvector_trivial(std::in_place_type_t<T>, Ts&&... ts)
+      : cvector_trivial(std::in_place, std::forward<Ts>(ts)...)
+  {}
+
+  // Element access.
+  constexpr const T& operator[](int i) const { assert(0 <= i && i < size_);
+    return storage_[i];
+  }
+
+  constexpr T& operator[](int i) { assert(0 <= i && i < size_);
+    return storage_[i];
+  }
+
+  constexpr const T& front() const { return storage_[0]; }
+  constexpr       T& front()       { return storage_[0]; }
+
+  constexpr const T& back() const { return storage_[size_]; }
+  constexpr       T& back()       { return storage_[size_]; }
+
+  constexpr const T* data() const { return &storage_; }
+  constexpr       T* data()       { return &storage_; }
+
+  // Iterators.
+  constexpr const T* begin() const { return {storage_}; }
+  constexpr       T* begin()       { return {storage_}; }
+  constexpr const T*   end() const { return {storage_ + size_}; }
+  constexpr       T*   end()       { return {storage_ + size_}; }
+
+  constexpr auto rbegin() const { return std::reverse_iterator(end()); }
+  constexpr auto rbegin()       { return std::reverse_iterator(end()); }
+  constexpr auto   rend() const { return std::reverse_iterator(begin()); }
+  constexpr auto   rend()       { return std::reverse_iterator(begin()); }
+
+  // Capacity
+  constexpr int empty() const { return size_ == 0; }
+  constexpr int  size() const { return size_; }
+
+  constexpr static int  max_size()     { return N; }
+  constexpr static void reserve(int n) { assert(n < N); }
+  constexpr static int  capacity()     { return N; }
+
+  constexpr friend int size(const cvector_trivial& v) { return v.size_; }
+
+    // Modifiers
+  template <typename... Ts>
+  constexpr T& emplace_back(Ts&&... ts) { assert(size_ < N);
+    static_assert(std::is_constructible_v<T, Ts...>);
+    return storage_[size_++] = T(std::forward<Ts>(ts)...);
+  }
+
+  constexpr T& push_back(const T& t) { assert(size_ < N);
+    return storage_[size_++] = t;
+  }
+
+  constexpr T& push_back(T&& t) { assert(size_ < N);
+    return storage_[size_++] = std::move(t);
+  }
+
+  constexpr T pop_back() { assert(size_ > 0);
+    return std::move(storage_[--size_]);
+  }
+
+  constexpr void resize(int n) { assert(0 <= n && n <= N);
+    size_ = n;
+  }
+
+  constexpr void clear() {
+    resize(0);
+  }
+};
+
+// Bypass all the mess if the type is trivial.
+template <typename T, int N>
+using cvector_base = std::conditional_t<std::is_trivial_v<T>,
+                                        cvector_trivial<T, N>,
+                                        P0848::ops<cvector_impl<T, N>>>;
+
 // The externally-visible cvector class.
 template <typename T, int N>
-struct cvector : P0848::ops<cvector_impl<T, N>>
+struct cvector : cvector_base<T, N>
 {
-  using P0848::ops<cvector_impl<T, N>>::ops;
+  using base = cvector_base<T, N>;
+  using base::base;
 };
 
 template <typename T, std::convertible_to<T>... Ts>

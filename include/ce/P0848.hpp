@@ -107,7 +107,7 @@ struct move_ctor<Base, false> : copy_ctor<Base>
   constexpr  move_ctor& operator=(move_ctor&&)      = default;
 };
 
-// Injects P0848 operations into Base as needed.
+// Injects P0848 operations into Base.
 template <typename Base>
 struct ops : move_ctor<Base> {
   using move_ctor<Base>::move_ctor;
@@ -162,8 +162,7 @@ constexpr static auto& construct(is_storage auto& s, is_storage auto&& t) {
   return construct(s, std::move(t).t);
 }
 
-template <typename T, int A, int B, int C, int D>
-constexpr static void destroy(storage<T, A, B, C, D>& s) {
+constexpr static void destroy(is_storage auto& s) {
   std::destroy_at(std::addressof(s.t));
 }
 
@@ -289,4 +288,10 @@ struct storage_iterator {
     return int(ptr - b.ptr);
   }
 };
+
+template <typename T>
+using storage_type = storage<T>;
+
+template <typename T>
+using storage_iterator_type = storage_iterator<T>;
 }
