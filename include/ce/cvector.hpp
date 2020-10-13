@@ -147,16 +147,99 @@ struct cvector_impl
     return *this;
   }
 
-  // Underlying data (not constexpr because of the reinterpret cast)
-  const T* data() const { return reinterpret_cast<const T*>(&storage); }
-        T* data()       { return reinterpret_cast<      T*>(&storage); }
+  // Element access.
+  constexpr const T& operator[](int i) const { assert(0 <= i && i < n);
+    return storage[i].t;
+  }
 
-  // Capacity and size queries.
-  constexpr static int capacity()                        { return N; }
-  constexpr        int size()                      const { return n; }
-  constexpr friend int size(const cvector_impl& v)       { return v.n; }
+  constexpr T& operator[](int i) { assert(0 <= i && i < n);
+    return storage[i].t;
+  }
 
-  // Resizing and clearing.
+  constexpr const T& front() const {
+    return storage[0].t;
+  }
+
+  constexpr T& front() {
+    return storage[0].t;
+  }
+
+  constexpr const T& back() const {
+    return storage[n].t;
+  }
+
+  constexpr T& back() {
+    return storage[n].t;
+  }
+
+  const T* data() const {
+    return reinterpret_cast<const T*>(&storage);
+  }
+
+  T* data() {
+    return reinterpret_cast<T*>(&storage);
+  }
+
+  // Iterators.
+  using iterator = P0848::storage_iterator<storage_type>;
+  using const_iterator = P0848::storage_iterator<const storage_type>;
+
+  constexpr const_iterator begin() const { return {storage}; }
+  constexpr       iterator begin()       { return {storage}; }
+  constexpr const_iterator   end() const { return {storage + n}; }
+  constexpr       iterator   end()       { return {storage + n}; }
+
+  constexpr auto rbegin() const { return std::reverse_iterator(end()); }
+  constexpr auto rbegin()       { return std::reverse_iterator(end()); }
+  constexpr auto   rend() const { return std::reverse_iterator(begin()); }
+  constexpr auto   rend()       { return std::reverse_iterator(begin()); }
+
+  // Capacity
+  constexpr int empty() const {
+    return n == 0;
+  }
+
+  constexpr int size() const {
+    return n;
+  }
+
+  constexpr static int max_size() {
+    return N;
+  }
+
+  constexpr static void reserve(int n) { assert(n < N);
+  }
+
+  constexpr static int capacity() {
+    return N;
+  }
+
+  constexpr static void shrink_to_fit(int n) {
+  }
+
+  constexpr friend int size(const cvector_impl& v) {
+    return v.n;
+  }
+
+  // Modifiers
+  template <typename... Ts>
+  constexpr T& emplace_back(Ts&&... ts) { assert(n < N);
+    static_assert(std::is_constructible_v<T, Ts...>);
+    return construct(storage[n++], std::forward<Ts>(ts)...);
+  }
+
+  constexpr T& push_back(const T& t) { assert(n < N);
+    return construct(storage[n++], t);
+  }
+
+  constexpr T& push_back(T&& t) { assert(n < N);
+    return construct(storage[n++], std::move(t));
+  }
+
+  constexpr T pop_back() { assert(n > 0);
+    return std::move(storage[--n].t);
+  }
+
   constexpr void resize(int i) { assert(0 <= i && i <= N);
     for (int j = i; j < n; ++j) {
       destroy(storage[j]);                      // shrinking
@@ -181,71 +264,8 @@ struct cvector_impl
     resize(0);
   }
 
-  // Element access.
-  constexpr const T& operator[](int i) const { assert(0 <= i && i < n);
-    return storage[i].t;
-  }
-
-  constexpr T& operator[](int i) { assert(0 <= i && i < n);
-    return storage[i].t;
-  }
-
-  constexpr const T& front() const { return storage[0].t; }
-  constexpr       T& front()       { return storage[0].t; }
-
-  constexpr const T& back()  const { return storage[n].t; }
-  constexpr       T& back()        { return storage[n].t; }
-
-  // Stacklike operations.
-  template <typename... Ts>
-  constexpr T& emplace_back(Ts&&... ts) { assert(n < N);
-    static_assert(std::is_constructible_v<T, Ts...>);
-    return construct(storage[n++], std::forward<Ts>(ts)...);
-  }
-
-  constexpr T& push_back(const T& t) { assert(n < N);
-    return construct(storage[n++], t);
-  }
-
-  constexpr T& push_back(T&& t) { assert(n < N);
-    return construct(storage[n++], std::move(t));
-  }
-
-  constexpr T pop_back() { assert(n > 0);
-    return std::move(storage[--n].t);
-  }
-
-  // Iterators.
-  using iterator = P0848::storage_iterator<storage_type>;
-  using const_iterator = P0848::storage_iterator<const storage_type>;
-
-  constexpr const_iterator begin() const { return {storage}; }
-  constexpr       iterator begin()       { return {storage}; }
-  constexpr const_iterator   end() const { return {storage + n}; }
-  constexpr       iterator   end()       { return {storage + n}; }
-
-  constexpr auto rbegin() const { return std::reverse_iterator(end()); }
-  constexpr auto rbegin()       { return std::reverse_iterator(end()); }
-  constexpr auto   rend() const { return std::reverse_iterator(begin()); }
-  constexpr auto   rend()       { return std::reverse_iterator(begin()); }
-
   // Helpers to manage the lifetime of storage elements.
  private:
-  template <typename... Ts>
-  constexpr static T& construct(storage_type& s, Ts&&... ts)
-  {
-    static_assert(std::is_constructible_v<T, Ts...>);
-    // clang is correct, but gcc doesn't yet support
-#ifdef __clang__
-    return *std::construct_at(std::addressof(s.t), std::forward<Ts>(ts)...);
-#else
-    return s.t = T(std::forward<Ts>(ts)...);
-#endif
-  }
-
-  constexpr static void destroy(storage_type& s) {
-    std::destroy_at(std::addressof(s.t));
-  }
 
   // Protected handlers are called by our subclasses as needed in order to
   // clear, copy construct, and/or move construct the array properly.

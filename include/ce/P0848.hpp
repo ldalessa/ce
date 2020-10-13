@@ -134,6 +134,25 @@ union storage;
 //   cosntexpr assignment
 // }
 
+// Wrappers for constructing and destructing the stored element.
+template <typename T, int A, int B, int C, int D, typename... Ts>
+constexpr static T& construct(storage<T, A, B, C, D>& s, Ts&&... ts)
+{
+  static_assert(std::is_constructible_v<T, Ts...>);
+  // clang is correct, but gcc doesn't yet support
+#ifdef __clang__
+  return *std::construct_at(std::addressof(s.t), std::forward<Ts>(ts)...);
+#else
+  return s.t = T(std::forward<Ts>(ts)...);
+#endif
+}
+
+template <typename T, int A, int B, int C, int D>
+constexpr static void destroy(storage<T, A, B, C, D>& s) {
+  std::destroy_at(std::addressof(s.t));
+}
+
+
 // A basic macro to protect a parameter from expansion.
 #define P0848_WRAP(x) x
 
