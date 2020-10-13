@@ -179,11 +179,11 @@ struct cvector_impl
   }
 
   const T* data() const {
-    return reinterpret_cast<const T*>(&storage_);
+    return reinterpret_cast<const T*>(storage_);
   }
 
   T* data() {
-    return reinterpret_cast<T*>(&storage_);
+    return reinterpret_cast<T*>(storage_);
   }
 
   // Iterators.
@@ -331,8 +331,8 @@ struct cvector_trivial {
   constexpr const T& back() const { assert(size_ > 0); return storage_[size_ - 1]; }
   constexpr       T& back()       { assert(size_ > 0); return storage_[size_ - 1]; }
 
-  constexpr const T* data() const { return &storage_; }
-  constexpr       T* data()       { return &storage_; }
+  constexpr const T* data() const { return storage_; }
+  constexpr       T* data()       { return storage_; }
 
   // Iterators.
   constexpr const T* begin() const { return {storage_}; }
