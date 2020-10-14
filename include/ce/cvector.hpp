@@ -95,6 +95,7 @@ struct cvector_impl
 
   constexpr cvector_impl(int n) : size_(n) { assert(0 <= n && n <= N);
     assert(std::is_default_constructible_v<T> || n == 0);
+    assert(n <= N);
     for (int i = 0; i < size_; ++i) {
       construct(storage_[i]);
     }
@@ -305,6 +306,7 @@ struct cvector_trivial
   constexpr cvector_trivial() = default;
 
   constexpr cvector_trivial(int n) : size_(n) {
+    assert(n <= N);
   }
 
   template <std::convertible_to<T>... Ts>
