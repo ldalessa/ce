@@ -275,7 +275,12 @@ struct cvector_impl
   // clear, copy construct, and/or move construct the array properly.
  protected:
   constexpr void on_dtor() {
-    clear();
+    // prefer to call clear() but that won't work until
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=97427 is resolved... gcc
+    // doesn't seem to care about destroy though.
+    for (int i = 0; i < size_; ++i) {
+      destroy(storage_[i]);
+    }
   }
 
   constexpr void on_copy_ctor(const cvector_impl& b) {
