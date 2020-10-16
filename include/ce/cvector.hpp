@@ -202,7 +202,7 @@ struct cvector_impl
   constexpr auto   rend()       { return std::reverse_iterator(begin()); }
 
   // Capacity
-  constexpr int empty() const {
+  constexpr bool empty() const {
     return size_ == 0;
   }
 
@@ -356,8 +356,8 @@ struct cvector_trivial
   constexpr auto   rend()       { return std::reverse_iterator(begin()); }
 
   // Capacity
-  constexpr int empty() const { return size_ == 0; }
-  constexpr int  size() const { return size_; }
+  constexpr bool empty() const { return size_ == 0; }
+  constexpr int   size() const { return size_; }
 
   constexpr static int  max_size()     { return N; }
   constexpr static void reserve(int n) { assert(n < N); }
