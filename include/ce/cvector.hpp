@@ -157,23 +157,19 @@ struct cvector_impl
     return storage_[i].t;
   }
 
-  constexpr const T& front() const {
-    assert(size_ > 0);
+  constexpr const T& front() const { assert(size_ > 0);
     return storage_[0].t;
   }
 
-  constexpr T& front() {
-    assert(size_ > 0);
+  constexpr T& front() { assert(size_ > 0);
     return storage_[0].t;
   }
 
-  constexpr const T& back() const {
-    assert(size_ > 0);
+  constexpr const T& back() const { assert(size_ > 0);
     return storage_[size_ - 1].t;
   }
 
-  constexpr T& back() {
-    assert(size_ > 0);
+  constexpr T& back() { assert(size_ > 0);
     return storage_[size_ - 1].t;
   }
 
