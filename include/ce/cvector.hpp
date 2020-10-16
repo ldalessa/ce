@@ -83,7 +83,6 @@ struct cvector_impl
   using value_type = T;
 
  private:
-  // using storage_type = P0848::storage<T>;
   using storage_type = P0848::storage_type<T>;
   storage_type storage_[N] = {};
   int size_ = 0;
@@ -95,7 +94,6 @@ struct cvector_impl
 
   constexpr cvector_impl(int n) : size_(n) { assert(0 <= n && n <= N);
     assert(std::is_default_constructible_v<T> || n == 0);
-    assert(n <= N);
     for (int i = 0; i < size_; ++i) {
       construct(storage_[i]);
     }
