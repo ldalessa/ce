@@ -1,5 +1,7 @@
 # ce
-Useful tools for constexpr work.
+Useful tools for constexpr work. 
+
+(right now this just means `cvector`, but might include more in the future)
 
 ## cvector
 
