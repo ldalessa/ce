@@ -41,7 +41,7 @@ This provided iterator is _only_ `random access`. It is not `contiguous` because
 of the `union`'s presence (even though there's not a world where the _actual_
 underlying stored `T`s are not contiguous). This means that algorithms and data
 structures that require `contiguous` iterators (like `string_view`) cannot be
-used.
+used in `constexpr` context.
 
 I have made two compromises to deal with this restriction.
 
