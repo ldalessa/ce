@@ -38,7 +38,7 @@ using ce::cvector;
 
 struct Foo {
   int a;
-  mutable int b;
+  int b;
 
   // unit tests want this to work
   constexpr bool operator==(const Foo& rhs) const {
@@ -61,19 +61,19 @@ struct Foo {
     if (!std::is_constant_evaluated()) {
       fmt::print(" Foo(const Foo&({})) (copy ctor)\n", a);
     }
-    rhs.b = -4;
+    const_cast<Foo&>(rhs).b = -4;
   }
 
   constexpr Foo(Foo&& rhs) : a(rhs.a) {
     if (!std::is_constant_evaluated()) {
       fmt::print(" Foo(Foo&&({})) (move ctor)\n", a);
     }
-    rhs.b = -3;
+    const_cast<Foo&>(rhs).b = -3;
   }
 
   constexpr Foo& operator=(const Foo& rhs) {
     a = rhs.a;
-    rhs.b = -5;
+    const_cast<Foo&>(rhs).b = -5;
     if (!std::is_constant_evaluated()) {
       fmt::print(" Foo = const Foo&({}) (copy)\n", a);
     }
@@ -82,7 +82,7 @@ struct Foo {
 
   constexpr Foo& operator=(Foo&& rhs) {
     a = rhs.a;
-    rhs.b = -2;
+    const_cast<Foo&>(rhs).b = -2;
     if (!std::is_constant_evaluated()) {
       fmt::print(" Foo = Foo&&({}) (move)\n", a);
     }
@@ -102,6 +102,9 @@ struct Foo {
     }
   }
 };
+
+constexpr cvector<int, 1> declare_int;
+constexpr cvector<Foo, 1> declare_foo;
 
 template <typename T>
 constexpr bool basic_ctor() {

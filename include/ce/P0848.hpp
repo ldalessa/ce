@@ -193,21 +193,14 @@ constexpr static void destroy(is_storage auto& s) {
 #define P0848_MAKE_MOVE_CTOR(defaulted, type)           \
   P0848_MAKE_MOVE_CTOR_##defaulted(P0848_WRAP(type))
 
-// Clang 10.0.1 on my Debian testing system wants monostate.
-#ifdef __clang__
-#define CLANG_NEEDS_MONOSTATE(id) struct {} id = {}
-#else
-#define CLANG_NEEDS_MONOSTATE(id)
-#endif
-
 // Expands into one of the storage union types.
 #define P0848_MAKE(type, triv_ctor, triv_dtor, triv_cctor, triv_mctor)  \
   template <typename T>                                                 \
   union type<T, triv_ctor, triv_dtor, triv_cctor, triv_mctor>           \
   {                                                                     \
     using stored_type = T;                                              \
+    struct {} _monotype = {};                                           \
     T t;                                                                \
-    CLANG_NEEDS_MONOSTATE(_);                                           \
     P0848_MAKE_CTOR(triv_ctor,       P0848_WRAP(type));                 \
     P0848_MAKE_DTOR(triv_dtor,       P0848_WRAP(type));                 \
     P0848_MAKE_COPY_CTOR(triv_cctor, P0848_WRAP(type));                 \

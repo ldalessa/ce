@@ -150,4 +150,6 @@ TEMPLATE_TEST_CASE_SIG("Check trait propagation", "[cvector][traits]",
   static_assert(not (std::is_trivially_move_constructible_v<U> ^ std::is_trivially_move_constructible_v<V>));
   static_assert(not (std::is_trivially_copy_assignable_v<U> ^ std::is_trivially_copy_assignable_v<V>));
   static_assert(not (std::is_trivially_move_assignable_v<U> ^ std::is_trivially_move_assignable_v<V>));
+  constexpr V decl;
+  constexpr V ctor{};
 }
