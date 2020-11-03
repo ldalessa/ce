@@ -31,3 +31,7 @@
 add_executable(cvector cvector.cpp cvector_traits.cpp)
 target_link_libraries(cvector PRIVATE ce::ce)
 add_test(NAME cvector_tests COMMAND cvector)
+
+add_executable(dvector dvector.cpp)
+target_link_libraries(dvector PRIVATE ce::ce)
+add_test(NAME dvector_tests COMMAND dvector)
