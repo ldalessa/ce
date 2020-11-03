@@ -84,6 +84,9 @@ struct Foo;
     constexpr auto operator<=>(int b) const {               \
       return n <=> b;                                       \
     }                                                       \
+    constexpr Foo& operator++() {                           \
+      return (++n, *this);                                  \
+    }                                                       \
   };                                                        \
   }
 
