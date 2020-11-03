@@ -29,536 +29,369 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ce/cvector.hpp"
-#include <catch2/catch_all.hpp>
+#include "common.hpp"
+#include "Foo.hpp"
 #include <functional>
+#include <cstdio>
 #include <utility>
 
-using ce::cvector;
+using namespace ce::tests;
 
-struct Foo {
-  int a;
-  int b;
+template <typename T>
+struct tests {
+  constexpr static ce::cvector<T, 1> declare;
 
-  // unit tests want this to work
-  constexpr bool operator==(const Foo& rhs) const {
-    return a == rhs.a;
+  constexpr static bool basic_ctor() {
+    ce::cvector<T, 3> a;
+    CE_CHECK(size(a) == 0);
+    ce::cvector<T, 3> b(3);
+    CE_CHECK(size(b) == 3);
+    return true;
   }
 
-  constexpr Foo() : a(-1), b(0) {
-    if (!std::is_constant_evaluated()) {
-      printf(" Foo(%d) (default ctor)\n", a);
-    }
+  constexpr static bool sized_ctor() {
+    ce::cvector<T, 3> a(0);
+    CE_CHECK(size(a) == 0);
+    ce::cvector<T, 3> b(2);
+    CE_CHECK(size(b) == 2);
+    ce::cvector<T, 3> c(3);
+    CE_CHECK(size(c) == 3);
+    return true;
   }
 
-  constexpr Foo(int a) : a(a), b(0) {
-    if (!std::is_constant_evaluated()) {
-      printf(" Foo(%d) (ctor)\n", a);
-    }
+  constexpr static bool read() {
+    ce::cvector<T, 3> a(2);
+    CE_CHECK(size(a) == 2);
+    CE_CHECK(a[0] == T());
+    CE_CHECK(a[1] == T());
+    return true;
   }
 
-  constexpr Foo(const Foo& rhs) : a(rhs.a) {
-    if (!std::is_constant_evaluated()) {
-      printf(" Foo(const Foo&(%d)) (copy ctor)\n", a);
-    }
-    const_cast<Foo&>(rhs).b = -4;
+  constexpr static bool write() {
+    ce::cvector<T, 3> a(2);
+    CE_CHECK(size(a) == 2);
+    a[0] = 1;
+    a[1] = 2;
+    CE_CHECK(a[0] == 1);
+    CE_CHECK(a[1] == 2);
+    return true;
   }
 
-  constexpr Foo(Foo&& rhs) : a(rhs.a) {
-    if (!std::is_constant_evaluated()) {
-      printf(" Foo(Foo&&(%d)) (move ctor)\n", a);
-    }
-    const_cast<Foo&>(rhs).b = -3;
+  constexpr static bool front() {
+    ce::cvector<T, 3> a(2);
+    a[0] = 1;
+    CE_CHECK(a.front() == 1);
+    a.front() = 2;
+    CE_CHECK(a.front() == 2);
+    const ce::cvector<T, 3> b = { std::in_place, 1, 2 };
+    CE_CHECK(b.front() == 1);
+    return true;
   }
 
-  constexpr Foo& operator=(const Foo& rhs) {
-    a = rhs.a;
-    const_cast<Foo&>(rhs).b = -5;
-    if (!std::is_constant_evaluated()) {
-      printf(" Foo = const Foo&(%d) (copy)\n", a);
-    }
-    return *this;
+  constexpr static bool back() {
+    ce::cvector<T, 3> a(1);
+    a[0] = 1;
+    CE_CHECK(a.back() == 1);
+    a.back() = 2;
+    CE_CHECK(a.back() == 2);
+    const ce::cvector<T, 3> b = { std::in_place, 1, 2 };
+    CE_CHECK(b.back() == 2);
+    return true;
   }
 
-  constexpr Foo& operator=(Foo&& rhs) {
-    a = rhs.a;
-    const_cast<Foo&>(rhs).b = -2;
-    if (!std::is_constant_evaluated()) {
-      printf(" Foo = Foo&&(%d) (move)\n", a);
-    }
-    return *this;
+  constexpr static bool ctad_inplace() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2 };
+    CE_CHECK(size(a) == 2);
+    CE_CHECK(a[0] == 1);
+    CE_CHECK(a[1] == 2);
+    return true;
   }
 
-  constexpr ~Foo() {
-    if (!std::is_constant_evaluated()) {
-      switch (b) {
-       case -1: printf("~Foo(%d) (uninitialized)\n", a);         return;
-       case -2: printf("~Foo(%d) (move assigned from)\n", a);    return;
-       case -3: printf("~Foo(%d) (move constructed from)\n", a); return;
-       case -4: printf("~Foo(%d) (copy constructed from)\n", a); return;
-       case -5: printf("~Foo(%d) (copied from)\n", a);           return;
-       default: printf("~Foo(%d)\n", a); return;
-      }
-    }
+  constexpr static bool resize() {
+    ce::cvector<T, 3> a;
+    a.resize(1);
+    CE_CHECK(size(a) == 1);
+    return true;
+  }
+
+  constexpr static bool resize_data() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2 };
+    a.resize(2);
+    CE_CHECK(size(a) == 2);
+    CE_CHECK(a[1] == 2);
+    CE_CHECK(a[0] == 1);
+    return true;
+  }
+
+  constexpr static bool resize_smaller() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2 };
+    a.resize(1);
+    CE_CHECK(size(a) == 1);
+    CE_CHECK(a[0] == 1);
+    return true;
+  }
+
+  constexpr static bool resize_larger() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2 };
+    a.resize(3);
+    CE_CHECK(size(a) == 3);
+    CE_CHECK(a[2] == T());
+    CE_CHECK(a[1] == 2);
+    CE_CHECK(a[0] == 1);
+    return true;
+  }
+
+  constexpr static bool pop() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2};
+    CE_CHECK(size(a) == 2);
+    CE_CHECK(a.pop_back() == 2);
+    CE_CHECK(a.pop_back() == 1);
+    CE_CHECK(size(a) == 0);
+    return true;
+  }
+
+  constexpr static bool emplace() {
+    ce::cvector<T, 3> a;
+    a.emplace_back(1);
+    a.emplace_back(2);
+    CE_CHECK(size(a) == 2);
+    CE_CHECK(a[1] == 2);
+    CE_CHECK(a[0] == 1);
+    return true;
+  }
+
+  constexpr static bool push_ref() {
+    ce::cvector<T, 3> a;
+    T one(1), two(2);
+    a.push_back(one);
+    a.push_back(two);
+    CE_CHECK(size(a) == 2);
+    CE_CHECK(a[1] == 2);
+    CE_CHECK(a[0] == 1);
+    return true;
+  }
+
+  constexpr static bool push_rref() {
+    ce::cvector<T, 3> a;
+    T one(1), two(2);
+    a.push_back(std::move(one));
+    a.push_back(std::move(two));
+    CE_CHECK(size(a) == 2);
+    CE_CHECK(a[1] == 2);
+    CE_CHECK(a[0] == 1);
+    return true;
+  }
+
+  constexpr static bool copy_ctor() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2 };
+    ce::cvector<T, 3> b = a;
+    CE_CHECK(size(b) == size(a));
+    CE_CHECK(b[1] == 2);
+    CE_CHECK(b[0] == 1);
+    CE_CHECK(a[1] == 2);
+    CE_CHECK(a[0] == 1);
+    return true;
+  }
+
+  constexpr static bool move_ctor() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2 };
+    ce::cvector<T, 3> b = std::move(a);
+    CE_CHECK(size(b) == 2);
+    CE_CHECK(b[1] == 2);
+    CE_CHECK(b[0] == 1);
+    return true;
+  }
+
+  constexpr static bool copy() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2 };
+    ce::cvector<T, 3> b;
+    b = a;
+    CE_CHECK(size(b) == size(a));
+    CE_CHECK(b[1] == 2);
+    CE_CHECK(b[0] == 1);
+    CE_CHECK(a[1] == 2);
+    CE_CHECK(a[0] == 1);
+    return true;
+  }
+
+  constexpr static bool copy_smaller() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2, 3 };
+    ce::cvector<T, 3> b = { std::in_place, 4, 5 };
+    b = a;
+    CE_CHECK(size(b) == size(a));
+    CE_CHECK(b[2] == 3);
+    CE_CHECK(b[1] == 2);
+    CE_CHECK(b[0] == 1);
+    CE_CHECK(a[2] == 3);
+    CE_CHECK(a[1] == 2);
+    CE_CHECK(a[0] == 1);
+    return true;
+  }
+
+  constexpr static bool copy_larger() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2 };
+    ce::cvector<T, 3> b = { std::in_place, 3, 4, 5 };
+    b = a;
+    CE_CHECK(size(b) == size(a));
+    CE_CHECK(b[1] == 2);
+    CE_CHECK(b[0] == 1);
+    CE_CHECK(a[1] == 2);
+    CE_CHECK(a[0] == 1);
+    return true;
+  }
+
+  constexpr static bool move() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2 };
+    ce::cvector<T, 3> b;
+    b = std::move(a);
+    CE_CHECK(size(b) == 2);
+    CE_CHECK(b[1] == 2);
+    CE_CHECK(b[0] == 1);
+    return true;
+  }
+
+  constexpr static bool move_smaller() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2, 3 };
+    ce::cvector<T, 3> b = { std::in_place, 4, 5 };
+    b = std::move(a);
+    CE_CHECK(size(b) == 3);
+    CE_CHECK(b[2] == 3);
+    CE_CHECK(b[1] == 2);
+    CE_CHECK(b[0] == 1);
+    return true;
+  }
+
+  constexpr static bool move_larger() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2 };
+    ce::cvector<T, 3> b = { std::in_place, 3, 4, 5 };
+    b = std::move(a);
+    CE_CHECK(size(b) == 2);
+    CE_CHECK(b[1] == 2);
+    CE_CHECK(b[0] == 1);
+    return true;
+  }
+
+  constexpr static bool clear() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2, 3 };
+    CE_CHECK(size(a) == 3);
+    a.clear();
+    CE_CHECK(size(a) == 0);
+    return true;
+  }
+
+  constexpr static bool iteration() {
+    ce::cvector<T, 16> a = { std::in_place, 1, 2, 3, 4 };
+    CE_CHECK(size(a) == 4);
+    CE_CHECK(a.begin() == a.begin());
+    CE_CHECK(a.end() == a.end());
+    CE_CHECK(a.end() - a.begin() == size(a));
+    CE_CHECK(*(a.begin() + 1) == a[1]);
+    CE_CHECK(a.begin()[1] == a[1]);
+    CE_CHECK(*(a.end() - 1) == a[3]);
+    CE_CHECK(a.end()[-1] == a[3]);
+    return true;
+  }
+
+  constexpr static bool all() {
+    CE_CHECK(basic_ctor());
+    CE_CHECK(sized_ctor());
+    CE_CHECK(read());
+    CE_CHECK(write());
+    CE_CHECK(front());
+    CE_CHECK(back());
+    CE_CHECK(ctad_inplace());
+    CE_CHECK(resize());
+    CE_CHECK(resize_data());
+    CE_CHECK(resize_smaller());
+    CE_CHECK(resize_larger());
+    CE_CHECK(pop());
+    CE_CHECK(emplace());
+    CE_CHECK(push_ref());
+    CE_CHECK(push_rref());
+    CE_CHECK(copy_ctor());
+    CE_CHECK(move_ctor());
+    CE_CHECK(copy());
+    CE_CHECK(copy_smaller());
+    CE_CHECK(copy_larger());
+    CE_CHECK(move());
+    CE_CHECK(move_smaller());
+    CE_CHECK(move_larger());
+    CE_CHECK(clear());
+    CE_CHECK(iteration());
+    return true;
   }
 };
 
-constexpr cvector<int, 1> declare_int;
-constexpr cvector<Foo, 1> declare_foo;
-
-template <typename T>
-constexpr bool basic_ctor() {
-  cvector<T, 3> a;
-  assert(size(a) == 0);
-  cvector<T, 3> b(3);
-  assert(size(b) == 3);
-  return true;
-}
-static_assert(basic_ctor<Foo>());
-
-TEMPLATE_TEST_CASE("Basic Construction", "[cvector][ctor]", int, Foo) {
-  static_assert(basic_ctor<TestType>());
-  basic_ctor<TestType>();
-}
-
-template <typename T>
-constexpr bool sized_ctor() {
-  cvector<T, 3> a(0);
-  assert(size(a) == 0);
-  cvector<T, 3> b(2);
-  assert(size(b) == 2);
-  cvector<T, 3> c(3);
-  assert(size(c) == 3);
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Sized Construction", "[cvector][ctor]", int, Foo) {
-  static_assert(sized_ctor<TestType>());
-  sized_ctor<TestType>();
-}
-
-template <typename T>
-constexpr bool read() {
-  cvector<T, 3> a(2);
-  assert(size(a) == 2);
-  assert(a[0] == T());
-  assert(a[1] == T());
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Read Access", "[cvector][read]", int, Foo) {
-  static_assert(read<TestType>());
-  read<TestType>();
-}
-
-template <typename T>
-constexpr bool write() {
-  cvector<T, 3> a(2);
-  assert(size(a) == 2);
-  a[0] = T(1);
-  a[1] = T(2);
-  assert(a[0] == T(1));
-  assert(a[1] == T(2));
-  return true;
- }
-
-TEMPLATE_TEST_CASE("Write Access", "[cvector][write]", int, Foo) {
-  static_assert(write<TestType>());
-  write<TestType>();
-}
-
-template <typename T>
-constexpr bool front() {
-  cvector<T, 3> a(2);
-  a[0] = T(1);
-  assert(a.front() == T(1));
-  a.front() = T(2);
-  assert(a.front() == T(2));
-  const cvector<T, 3> b = { std::in_place, 1, 2 };
-  assert(b.front() == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Front access", "[cvector][front]", int, Foo) {
-  static_assert(front<TestType>());
-  front<TestType>();
-}
-
-template <typename T>
-constexpr bool back() {
-  cvector<T, 3> a(1);
-  a[0] = T(1);
-  assert(a.back() == T(1));
-  a.back() = T(2);
-  assert(a.back() == T(2));
-  const cvector<T, 3> b = { std::in_place, 1, 2 };
-  assert(b.back() == T(2));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Back access", "[cvector][back]", int, Foo) {
-  static_assert(back<TestType>());
-  back<TestType>();
-}
-
-template <typename T>
-constexpr bool ctad_inplace() {
-  cvector<T, 3> a = { std::in_place, 1, 2 };
-  assert(size(a) == 2);
-  assert(a[0] == T(1));
-  assert(a[1] == T(2));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("CTAD Variadic Construction", "[cvector][ctad]", int, Foo) {
-  static_assert(ctad_inplace<TestType>());
-  ctad_inplace<TestType>();
-}
-
-TEMPLATE_TEST_CASE("CTAD Variadic Construction with Conversion", "[cvector][ctad]", int) {
+constexpr static bool ctad_variadic_conversion() {
   // T-relative someday?
-  cvector b = { std::in_place, 1u, 2.0, -1 };
-  assert(size(b) == 3);
-  assert(b[0] == 1);
-  assert(b[1] == 2);
-  assert(b[2] == unsigned(-1));
+  ce::cvector b = { std::in_place, 1u, 2.0, -1 };
+  CE_CHECK(size(b) == 3);
+  CE_CHECK(b[0] == 1);
+  CE_CHECK(b[1] == 2);
+  CE_CHECK(b[2] == unsigned(-1));
 
-  cvector c = { std::in_place_type<double>, 1u, 2.5, -1 };
-  assert(size(c) == 3);
-  assert(c[0] ==  1.0);
-  assert(c[1] ==  2.5);
-  assert(c[2] == -1.0);
-}
-
-template <typename T>
-constexpr bool resize() {
-  cvector<T, 3> a;
-  a.resize(1);
-  assert(size(a) == 1);
+  ce::cvector c = { std::in_place_type<double>, 1u, 2.5, -1 };
+  CE_CHECK(size(c) == 3);
+  CE_CHECK(c[0] ==  1.0);
+  CE_CHECK(c[1] ==  2.5);
+  CE_CHECK(c[2] == -1.0);
   return true;
 }
 
-TEMPLATE_TEST_CASE("Resizing", "[cvector][resize]", int, Foo) {
-  static_assert(resize<TestType>());
-  resize<TestType>();
-}
-
-template <typename T>
-constexpr bool resize_data() {
-  cvector<T, 3> a = { std::in_place, 1, 2 };
-  a.resize(2);
-  assert(size(a) == 2);
-  assert(a[1] == T(2));
-  assert(a[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Resizing with data", "[cvector][resize]", int, Foo) {
-  static_assert(resize_data<TestType>());
-  resize_data<TestType>();
-}
-
-template <typename T>
-constexpr bool resize_smaller() {
-  cvector<T, 3> a = { std::in_place, 1, 2 };
-  a.resize(1);
-  assert(size(a) == 1);
-  assert(a[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Resizing smaller", "[cvector][resize]", int, Foo) {
-  static_assert(resize_smaller<TestType>());
-  resize_smaller<TestType>();
-}
-
-template <typename T>
-constexpr bool resize_larger() {
-  cvector<T, 3> a = { std::in_place, 1, 2 };
-  a.resize(3);
-  assert(size(a) == 3);
-  assert(a[2] == T());
-  assert(a[1] == T(2));
-  assert(a[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Resizing larger", "[cvector][resize]", int, Foo) {
-  static_assert(resize_larger<TestType>());
-  resize_larger<TestType>();
-}
-
-template <typename T>
-constexpr bool pop() {
-  cvector<T, 3> a = { std::in_place, 1, 2};
-  assert(size(a) == 2);
-  assert(a.pop_back() == T(2));
-  assert(a.pop_back() == T(1));
-  assert(size(a) == 0);
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Pop", "[cvector][pop]", int, Foo) {
-  static_assert(pop<TestType>());
-  pop<TestType>();
-}
-
-template <typename T>
-constexpr bool emplace() {
-  cvector<T, 3> a;
-  a.emplace_back(1);
-  a.emplace_back(2);
-  assert(size(a) == 2);
-  assert(a[1] == T(2));
-  assert(a[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Emplace", "[cvector][emplace]", int, Foo) {
-  static_assert(emplace<TestType>());
-  emplace<TestType>();
-}
-
-template <typename T>
-constexpr bool push_ref() {
-  cvector<T, 3> a;
-  T one(1), two(2);
-  a.push_back(one);
-  a.push_back(two);
-  assert(size(a) == 2);
-  assert(a[1] == T(2));
-  assert(a[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Pushing references", "[cvector][push]", int, Foo) {
-  static_assert(push_ref<TestType>());
-  push_ref<TestType>();
-}
-
-template <typename T>
-constexpr bool push_rref() {
-  cvector<T, 3> a;
-  T one(1), two(2);
-  a.push_back(std::move(one));
-  a.push_back(std::move(two));
-  assert(size(a) == 2);
-  assert(a[1] == T(2));
-  assert(a[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Pushing r-value references", "[cvector][push]", int, Foo)
-{
-  static_assert(push_rref<TestType>());
-  push_rref<TestType>();
-}
-
-template <typename T>
-constexpr bool copy_ctor() {
-  cvector<T, 3> a = { std::in_place, 1, 2 };
-  cvector<T, 3> b = a;
-  assert(size(b) == size(a));
-  assert(b[1] == T(2));
-  assert(b[0] == T(1));
-  assert(a[1] == T(2));
-  assert(a[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Copy contructor", "[cvector][ctor]", int, Foo) {
-  static_assert(copy_ctor<TestType>());
-  copy_ctor<TestType>();
-}
-
-template <typename T>
-constexpr bool move_ctor() {
-  cvector<T, 3> a = { std::in_place, 1, 2 };
-  cvector<T, 3> b = std::move(a);
-  assert(size(b) == 2);
-  assert(b[1] == T(2));
-  assert(b[0] == T(1));
-  return true;
-  }
-
-TEMPLATE_TEST_CASE("Move contructor", "[cvector][ctor]", int, Foo) {
-  static_assert(move_ctor<TestType>());
-  move_ctor<TestType>();
-}
-
-template <typename T>
-constexpr bool copy() {
-  cvector<T, 3> a = { std::in_place, 1, 2 };
-  cvector<T, 3> b;
-  b = a;
-  assert(size(b) == size(a));
-  assert(b[1] == T(2));
-  assert(b[0] == T(1));
-  assert(a[1] == T(2));
-  assert(a[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Copy assignment", "[cvector][assign]", int, Foo) {
-  static_assert(copy<TestType>());
-  copy<TestType>();
-}
-
-template <typename T>
-constexpr bool copy_smaller() {
-  cvector<T, 3> a = { std::in_place, 1, 2, 3 };
-  cvector<T, 3> b = { std::in_place, 4, 5 };
-  b = a;
-  assert(size(b) == size(a));
-  assert(b[2] == T(3));
-  assert(b[1] == T(2));
-  assert(b[0] == T(1));
-  assert(a[2] == T(3));
-  assert(a[1] == T(2));
-  assert(a[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Copy assignment smaller to larger", "[cvector][assign]", int, Foo) {
-  static_assert(copy_smaller<TestType>());
-  copy_smaller<TestType>();
-}
-
-template <typename T>
-constexpr bool copy_larger() {
-  cvector<T, 3> a = { std::in_place, 1, 2 };
-  cvector<T, 3> b = { std::in_place, 3, 4, 5 };
-  b = a;
-  assert(size(b) == size(a));
-  assert(b[1] == T(2));
-  assert(b[0] == T(1));
-  assert(a[1] == T(2));
-  assert(a[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Copy assignment larger to smaller", "[cvector][assign]", int, Foo) {
-  static_assert(copy_larger<TestType>());
-  copy_larger<TestType>();
-}
-
-template <typename T>
-constexpr bool move() {
-  cvector<T, 3> a = { std::in_place, 1, 2 };
-  cvector<T, 3> b;
-  b = std::move(a);
-  assert(size(b) == 2);
-  assert(b[1] == T(2));
-  assert(b[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Move assignment", "[cvector][assign]", int, Foo) {
-  static_assert(move<TestType>());
-  move<TestType>();
-}
-
-template <typename T>
-constexpr bool move_smaller() {
-  cvector<T, 3> a = { std::in_place, 1, 2, 3 };
-  cvector<T, 3> b = { std::in_place, 4, 5 };
-  b = std::move(a);
-  assert(size(b) == 3);
-  assert(b[2] == T(3));
-  assert(b[1] == T(2));
-  assert(b[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Move assignment larger to smaller", "[cvector][assign]", int, Foo) {
-  static_assert(move_smaller<TestType>());
-  move_smaller<TestType>();
-}
-
-template <typename T>
-constexpr bool move_larger() {
-  cvector<T, 3> a = { std::in_place, 1, 2 };
-  cvector<T, 3> b = { std::in_place, 3, 4, 5 };
-  b = std::move(a);
-  assert(size(b) == 2);
-  assert(b[1] == T(2));
-  assert(b[0] == T(1));
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Move assignment smaller to larger", "[cvector][assign]", int, Foo) {
-  static_assert(move_larger<TestType>());
-  move_larger<TestType>();
-}
-
-template <typename T>
-constexpr bool clear() {
-  cvector<T, 3> a = { std::in_place, 1, 2, 3 };
-  assert(size(a) == 3);
-  a.clear();
-  assert(size(a) == 0);
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Clearing", "[cvector][clear]", int, Foo) {
-  static_assert(clear<TestType>());
-  clear<TestType>();
-}
-
-template <typename T>
-constexpr bool iteration() {
-  cvector<T, 16> a = { std::in_place, 1, 2, 3, 4 };
-  assert(size(a) == 4);
-  assert(a.begin() == a.begin());
-  assert(a.end() == a.end());
-  assert(a.end() - a.begin() == size(a));
-  assert(*(a.begin() + 1) == a[1]);
-  assert(a.begin()[1] == a[1]);
-  assert(*(a.end() - 1) == a[3]);
-  assert(a.end()[-1] == a[3]);
-  return true;
-}
-
-TEMPLATE_TEST_CASE("Iterators", "[cvector][iteration]", int, Foo) {
-  static_assert(iteration<TestType>());
-  iteration<TestType>();
-}
-
-TEST_CASE("Iteration", "[cvector][iteration]") {
-  cvector<int, 16> a = { std::in_place, 1, 2, 3, 4 };
-  assert(size(a) == 4);
+constexpr static bool iteration() {
+  ce::cvector<int, 16> a = { std::in_place, 1, 2, 3, 4 };
+  CE_CHECK(size(a) == 4);
 
   int total = 0;
   for (auto&& i : a) {
     total += i;
   }
-  assert(total == 10);
+  CE_CHECK(total == 10);
 
   total = 0;
   for (int i : a) {
     total += i;
   }
-  assert(total == 10);
+  CE_CHECK(total == 10);
+  return true;
 }
 
-constexpr bool references() {
+constexpr static bool references() {
   int i = 1;
-  cvector<std::reference_wrapper<int>, 5> a = {
+  ce::cvector<std::reference_wrapper<int>, 5> a = {
     std::in_place,
     std::ref(i),
     std::ref(i),
     std::ref(i)
   };
-  assert(size(a) == 3);
-  assert(a.pop_back() == 1 && i == 1);
-  assert(a.pop_back() == 1 && i == 1);
+  CE_CHECK(size(a) == 3);
+  CE_CHECK(a.pop_back() == 1 && i == 1);
+  CE_CHECK(a.pop_back() == 1 && i == 1);
   a.back().get() = 2;
   a.push_back(std::ref(i));
-  assert(a.pop_back() == 2);
-  assert(a.pop_back() == 2);
+  CE_CHECK(a.pop_back() == 2);
+  CE_CHECK(a.pop_back() == 2);
   return true;
 }
 
-TEST_CASE("Test with references", "[cvector]") {
-  static_assert(references());
+#define CE_EXPAND(...) static_assert(tests<Foo<__VA_ARGS__>>::all())
+#include "common.decl"
+#undef CE_EXPAND
+
+static_assert(tests<int>::all());
+static_assert(ctad_variadic_conversion());
+static_assert(iteration());
+static_assert(references());
+
+int main() {
+
+#define CE_EXPAND(...) tests<Foo<__VA_ARGS__>>::all()
+#include "common.decl"
+#undef CE_EXPAND
+
+  tests<int>::all();
+  ctad_variadic_conversion();
+  iteration();
   references();
+  return 0;
 }

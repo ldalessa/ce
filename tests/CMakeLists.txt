@@ -28,14 +28,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include(FetchContent)
-
-FetchContent_Declare(catch2
-  GIT_REPOSITORY     https://github.com/catchorg/Catch2
-  GIT_TAG            devel)
-FetchContent_MakeAvailable(catch2)
-
-#TODO use Catch2 instead of raw main()
 add_executable(cvector cvector.cpp cvector_traits.cpp)
-target_link_libraries(cvector PRIVATE ce::ce Catch2::Catch2WithMain)
+target_link_libraries(cvector PRIVATE ce::ce)
 add_test(NAME cvector_tests COMMAND cvector)
