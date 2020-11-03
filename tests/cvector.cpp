@@ -39,7 +39,11 @@ using namespace ce::tests;
 
 template <typename T>
 struct tests {
+  // waiting for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=97665, I think
+#ifdef __clang__
   constexpr static ce::cvector<T, 1> declare;
+#endif
+  constexpr static ce::cvector<T, 1> define{};
 
   constexpr static bool basic_ctor() {
     ce::cvector<T, 3> a;
