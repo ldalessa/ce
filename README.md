@@ -1,13 +1,19 @@
 # ce
-Useful tools for constexpr work. 
+Useful tools for constexpr work.
 
-(right now this just means `cvector`, but might include more in the future)
+## vectors
 
-## cvector
+- `cvector<T, N>` a statically allocated vector that supports non-trivially
+  constructible types.
+  
+- `dvector<T>` a dynamically allocated vector that supports non-trivially
+  constructible types
 
-A fixed-capacity constexpr vector that supports types without trivial
-constructors, while preserving their `is_trivial*` set of types. Requires C++20
-and a compiler that supports concepts, with the `concepts` header.
+
+`constexpr` vectors that supports types without trivial constructors, while
+preserving their `is_trivial*` set of types. Requires C++20 and a compiler that
+supports concepts, with the `concepts` header. Neither vector API truly matches
+`std::vector`'s API.
 
 The general idea is to use an array of `union { T t }` to store the elements of
 the array, as such unions can be created without initializing the underlying
@@ -28,6 +34,10 @@ design, which I've attempted to encapsulate in the `include/ce/P0848.hpp`
 header. The `cvector_base` class template implements the vector using a `union`
 array that is declared using `P0848` helpers, and then the `cvector` class
 template sorts out the `T`-relative `P0848` support via policy inheritance.
+
+The `dvector` can't really support trait inheritance in the same way as
+`cvector` because it needs to have non-trivial behavior in all of the special
+members in order to manage the array, so it is just implemented directly.
 
 ### Iterator issues
 
@@ -50,17 +60,17 @@ I have made two compromises to deal with this restriction.
    iterators. These are `contiguous` and can be used in either `constexpr` or
    normal contexts as such.
 
-2. I have provided a `data()` function for the non-trivial `cvector_base` that
-   returns a `T*` by reinterpreting the `union { T t; } storage[]` as a `T*`. As
-   far as I understand this is 100% safe and provides a `contiguous` interface
-   to the underlying array, but it is not valid in `constexpr` context as
-   `reinterpret_cast` is unavailable (which is the reason that this project is
+2. I have provided a `data()` function for the non-trivial vectors that returns
+   a `T*` by reinterpreting the `union { T t; } storage[]` as a `T*`. As far as
+   I understand this is 100% safe and provides a `contiguous` interface to the
+   underlying array, but it is not valid in `constexpr` context as
+   `reinterpret_cast` is unavailable (which is the reason that this project is 
    hard in the first place).
 
 ### API notes
 
-My `cvector` API is modeled on, but not a clone of, `std::vector`. I changed
-some things that I don't like (e.g., `push_back` returns references and such). I
+My vector API is modeled on, but not a clone of, `std::vector`. I changed some
+things that I don't like (e.g., `push_back` returns references and such). I
 don't use unsigned types so vector size and capacity are stored as `int`---these
 could be `long` but in  `constexpr`-land that didn't seem necessary. I haven't
 implemented a bunch of the `insert`-style API either, as it hasn't been
@@ -68,7 +78,7 @@ necessary for me (pull requests would be fine).
 
 Finally I have only a limited set of constructors.
 
-1. The default constructor allocates an empty, `0`-sized vector.
+1. The default constructors allocates an empty, `0`-sized vector.
 2. The single `int` constructor allocates an `n`-sized vector, but is only
    available if `T` has a default constructor.
 3. There are two tagged constructors for in-place initialize (tagged with
