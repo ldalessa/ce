@@ -69,7 +69,7 @@
 #include <algorithm>
 #include <cassert>
 #include <concepts>
-#include <memory>
+#include <iterator>
 
 namespace ce {
 // The core vector implementation.
@@ -215,7 +215,7 @@ struct cvector_impl
     return N;
   }
 
-  constexpr static void shrink_to_fit(int n) {
+  constexpr static void shrink_to_fit() {
   }
 
   constexpr friend int size(const cvector_impl& v) {
