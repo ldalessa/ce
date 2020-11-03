@@ -126,7 +126,8 @@ template <typename T,
           int = std::is_trivially_destructible_v<T>,
           int = std::is_trivially_copy_constructible_v<T>,
           int = std::is_trivially_move_constructible_v<T>>
-union storage; // {
+union storage;
+// {
 //   T t;
 //   using stored_type = T;
 // }
@@ -234,7 +235,6 @@ P0848_MAKE(storage, 1, 1, 1, 0);
 P0848_MAKE(storage, 1, 1, 1, 1);
 
 #undef P0848_MAKE
-#undef CLANG_NEEDS_MONOSTATE
 #undef P0848_MAKE_MOVE
 #undef P0848_MAKE_COPY
 #undef P0848_MAKE_DTOR

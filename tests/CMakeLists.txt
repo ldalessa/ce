@@ -28,19 +28,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include(FetchContent)
-
-FetchContent_Declare(fmt
-  GIT_REPOSITORY     https://github.com/fmtlib/fmt.git
-  GIT_TAG            master)
-FetchContent_MakeAvailable(fmt)
-
-FetchContent_Declare(catch2
-  GIT_REPOSITORY     https://github.com/catchorg/Catch2
-  GIT_TAG            devel)
-FetchContent_MakeAvailable(catch2)
-
-#TODO use Catch2 instead of raw main()
 add_executable(cvector cvector.cpp cvector_traits.cpp)
-target_link_libraries(cvector PRIVATE ce::ce fmt::fmt Catch2::Catch2WithMain)
+target_link_libraries(cvector PRIVATE ce::ce)
 add_test(NAME cvector_tests COMMAND cvector)
+
+add_executable(dvector dvector.cpp)
+target_link_libraries(dvector PRIVATE ce::ce)
+add_test(NAME dvector_tests COMMAND dvector)

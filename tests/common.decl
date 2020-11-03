@@ -28,26 +28,39 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "ce/cvector.hpp"
-#include "common.hpp"
-#include "Foo.hpp"
+#ifndef CE_EXPAND
+#error CE_EXPAND must be defined befor including common.decl
+#endif
 
-using namespace ce::tests;
-
-template <typename T>
-constexpr static bool check() {
-  using V = ce::cvector<T, 8>;
-  CE_CHECK(not (std::is_trivially_destructible_v<T> ^ std::is_trivially_destructible_v<V>));
-  CE_CHECK(not (std::is_trivially_copy_constructible_v<T> ^ std::is_trivially_copy_constructible_v<V>));
-  CE_CHECK(not (std::is_trivially_move_constructible_v<T> ^ std::is_trivially_move_constructible_v<V>));
-  CE_CHECK(not (std::is_trivially_copy_assignable_v<T> ^ std::is_trivially_copy_assignable_v<V>));
-  CE_CHECK(not (std::is_trivially_move_assignable_v<T> ^ std::is_trivially_move_assignable_v<V>));
-
-  constexpr V decl;
-  constexpr V ctor{};
-  return true;
-};
-
-#define CE_EXPAND(...) static_assert(check<Foo<__VA_ARGS__>>())
-#include "common.decl"
-#undef CE_EXPAND
+CE_EXPAND(0, 0, 0, 0, 0);
+CE_EXPAND(0, 0, 0, 0, 1);
+CE_EXPAND(0, 0, 0, 1, 0);
+CE_EXPAND(0, 0, 0, 1, 1);
+CE_EXPAND(0, 0, 1, 0, 0);
+CE_EXPAND(0, 0, 1, 0, 1);
+CE_EXPAND(0, 0, 1, 1, 0);
+CE_EXPAND(0, 0, 1, 1, 1);
+CE_EXPAND(0, 1, 0, 0, 0);
+CE_EXPAND(0, 1, 0, 0, 1);
+CE_EXPAND(0, 1, 0, 1, 0);
+CE_EXPAND(0, 1, 0, 1, 1);
+CE_EXPAND(0, 1, 1, 0, 0);
+CE_EXPAND(0, 1, 1, 0, 1);
+CE_EXPAND(0, 1, 1, 1, 0);
+CE_EXPAND(0, 1, 1, 1, 1);
+CE_EXPAND(1, 0, 0, 0, 0);
+CE_EXPAND(1, 0, 0, 0, 1);
+CE_EXPAND(1, 0, 0, 1, 0);
+CE_EXPAND(1, 0, 0, 1, 1);
+CE_EXPAND(1, 0, 1, 0, 0);
+CE_EXPAND(1, 0, 1, 0, 1);
+CE_EXPAND(1, 0, 1, 1, 0);
+CE_EXPAND(1, 0, 1, 1, 1);
+CE_EXPAND(1, 1, 0, 0, 0);
+CE_EXPAND(1, 1, 0, 0, 1);
+CE_EXPAND(1, 1, 0, 1, 0);
+CE_EXPAND(1, 1, 0, 1, 1);
+CE_EXPAND(1, 1, 1, 0, 0);
+CE_EXPAND(1, 1, 1, 0, 1);
+CE_EXPAND(1, 1, 1, 1, 0);
+CE_EXPAND(1, 1, 1, 1, 1);

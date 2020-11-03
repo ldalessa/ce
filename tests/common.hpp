@@ -28,26 +28,28 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "ce/cvector.hpp"
-#include "common.hpp"
-#include "Foo.hpp"
+#include <cstdio>
+#include <type_traits>
+#include <experimental/source_location>
 
-using namespace ce::tests;
+namespace ce::tests
+{
+using std::experimental::source_location;
 
-template <typename T>
-constexpr static bool check() {
-  using V = ce::cvector<T, 8>;
-  CE_CHECK(not (std::is_trivially_destructible_v<T> ^ std::is_trivially_destructible_v<V>));
-  CE_CHECK(not (std::is_trivially_copy_constructible_v<T> ^ std::is_trivially_copy_constructible_v<V>));
-  CE_CHECK(not (std::is_trivially_move_constructible_v<T> ^ std::is_trivially_move_constructible_v<V>));
-  CE_CHECK(not (std::is_trivially_copy_assignable_v<T> ^ std::is_trivially_copy_assignable_v<V>));
-  CE_CHECK(not (std::is_trivially_move_assignable_v<T> ^ std::is_trivially_move_assignable_v<V>));
+constexpr static inline void
+check(bool condition, const char *expr,
+      source_location&& src = source_location::current())
+{
+  if (condition) {
+    return;
+  }
 
-  constexpr V decl;
-  constexpr V ctor{};
-  return true;
-};
+  if (!std::is_constant_evaluated()) {
+    std::printf("%s:%d failed unit test %s\n", src.file_name(), src.line(), expr);
+  }
 
-#define CE_EXPAND(...) static_assert(check<Foo<__VA_ARGS__>>())
-#include "common.decl"
-#undef CE_EXPAND
+  throw src;
+}
+}
+
+#define CE_CHECK(expr, ...) check((expr), #expr, ##__VA_ARGS__)
