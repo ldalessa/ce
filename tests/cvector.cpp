@@ -30,7 +30,6 @@
 
 #include "ce/cvector.hpp"
 #include <catch2/catch_all.hpp>
-#include <fmt/core.h>
 #include <functional>
 #include <utility>
 
@@ -47,26 +46,26 @@ struct Foo {
 
   constexpr Foo() : a(-1), b(0) {
     if (!std::is_constant_evaluated()) {
-      fmt::print(" Foo({}) (default ctor)\n", a);
+      printf(" Foo(%d) (default ctor)\n", a);
     }
   }
 
   constexpr Foo(int a) : a(a), b(0) {
     if (!std::is_constant_evaluated()) {
-      fmt::print(" Foo({}) (ctor)\n", a);
+      printf(" Foo(%d) (ctor)\n", a);
     }
   }
 
   constexpr Foo(const Foo& rhs) : a(rhs.a) {
     if (!std::is_constant_evaluated()) {
-      fmt::print(" Foo(const Foo&({})) (copy ctor)\n", a);
+      printf(" Foo(const Foo&(%d)) (copy ctor)\n", a);
     }
     const_cast<Foo&>(rhs).b = -4;
   }
 
   constexpr Foo(Foo&& rhs) : a(rhs.a) {
     if (!std::is_constant_evaluated()) {
-      fmt::print(" Foo(Foo&&({})) (move ctor)\n", a);
+      printf(" Foo(Foo&&(%d)) (move ctor)\n", a);
     }
     const_cast<Foo&>(rhs).b = -3;
   }
@@ -75,7 +74,7 @@ struct Foo {
     a = rhs.a;
     const_cast<Foo&>(rhs).b = -5;
     if (!std::is_constant_evaluated()) {
-      fmt::print(" Foo = const Foo&({}) (copy)\n", a);
+      printf(" Foo = const Foo&(%d) (copy)\n", a);
     }
     return *this;
   }
@@ -84,7 +83,7 @@ struct Foo {
     a = rhs.a;
     const_cast<Foo&>(rhs).b = -2;
     if (!std::is_constant_evaluated()) {
-      fmt::print(" Foo = Foo&&({}) (move)\n", a);
+      printf(" Foo = Foo&&(%d) (move)\n", a);
     }
     return *this;
   }
@@ -92,12 +91,12 @@ struct Foo {
   constexpr ~Foo() {
     if (!std::is_constant_evaluated()) {
       switch (b) {
-       case -1: fmt::print("~Foo({}) (uninitialized)\n", a);         return;
-       case -2: fmt::print("~Foo({}) (move assigned from)\n", a);    return;
-       case -3: fmt::print("~Foo({}) (move constructed from)\n", a); return;
-       case -4: fmt::print("~Foo({}) (copy constructed from)\n", a); return;
-       case -5: fmt::print("~Foo({}) (copied from)\n", a);           return;
-       default: fmt::print("~Foo({})\n", a); return;
+       case -1: printf("~Foo(%d) (uninitialized)\n", a);         return;
+       case -2: printf("~Foo(%d) (move assigned from)\n", a);    return;
+       case -3: printf("~Foo(%d) (move constructed from)\n", a); return;
+       case -4: printf("~Foo(%d) (copy constructed from)\n", a); return;
+       case -5: printf("~Foo(%d) (copied from)\n", a);           return;
+       default: printf("~Foo(%d)\n", a); return;
       }
     }
   }
