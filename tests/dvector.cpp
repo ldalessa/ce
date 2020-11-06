@@ -43,7 +43,7 @@ struct tests {
     CE_CHECK(v.capacity() == capacity, std::move(src));
     CE_CHECK(v.size() == size, std::move(src));
     if (!std::is_constant_evaluated()) {
-      CE_CHECK(v.data() != nullptr, std::move(src));
+      CE_CHECK(v.data() != nullptr || v.size() == 0, std::move(src));
     }
   }
 
