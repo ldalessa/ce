@@ -143,28 +143,22 @@ concept is_storage = is_storage_trait<T>::value;
 
 // Wrappers for constructing and destructing the stored element.
 template <is_storage U, typename... Ts>
-constexpr static auto& construct(U& s, Ts&&... ts)
+constexpr static typename U::stored_type& construct(U& u, Ts&&... ts)
 {
-  using T = typename U::stored_type;
-  static_assert(std::is_constructible_v<T, Ts...>);
-  // clang is correct, but gcc doesn't yet support
-#ifdef __clang__
-  return *std::construct_at(std::addressof(s.t), std::forward<Ts>(ts)...);
-#else
-  return s.t = T(std::forward<Ts>(ts)...);
-#endif
+  static_assert(std::is_constructible_v<typename U::stored_type, Ts...>);
+  return *std::construct_at(std::addressof(u.t), std::forward<Ts>(ts)...);
 }
 
-constexpr static auto& construct(is_storage auto& s, is_storage auto const& t) {
-  return construct(s, t.t);
+constexpr static auto& construct(is_storage auto& u, is_storage auto const& v) {
+  return construct(u, v.t);
 }
 
-constexpr static auto& construct(is_storage auto& s, is_storage auto&& t) {
-  return construct(s, std::move(t).t);
+constexpr static auto& construct(is_storage auto& u, is_storage auto&& v) {
+  return construct(u, std::move(v).t);
 }
 
-constexpr static void destroy(is_storage auto& s) {
-  std::destroy_at(std::addressof(s.t));
+constexpr static void destroy(is_storage auto& u) {
+  std::destroy_at(std::addressof(u.t));
 }
 
 // A basic macro to protect a parameter from expansion.
