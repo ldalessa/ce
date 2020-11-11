@@ -143,21 +143,32 @@ concept is_storage = is_storage_trait<T>::value;
 
 // Wrappers for constructing and destructing the stored element.
 template <is_storage U, typename... Ts>
-constexpr static typename U::stored_type& construct(U& u, Ts&&... ts)
+constexpr static typename U::stored_type&
+construct(U& u, Ts&&... ts)
 {
   static_assert(std::is_constructible_v<typename U::stored_type, Ts...>);
+  // clang is correct, but gcc doesn't yet support
+#ifdef __clang__
   return *std::construct_at(std::addressof(u.t), std::forward<Ts>(ts)...);
+#else
+  return u.t = typename U::stored_type(std::forward<Ts>(ts)...);
+#endif
 }
 
-constexpr static auto& construct(is_storage auto& u, is_storage auto const& v) {
+constexpr static decltype(auto)
+construct(is_storage auto& u, is_storage auto const& v)
+{
   return construct(u, v.t);
 }
 
-constexpr static auto& construct(is_storage auto& u, is_storage auto&& v) {
+constexpr static decltype(auto)
+construct(is_storage auto& u, is_storage auto&& v)
+{
   return construct(u, std::move(v).t);
 }
 
-constexpr static void destroy(is_storage auto& u) {
+constexpr static void destroy(is_storage auto& u)
+{
   std::destroy_at(std::addressof(u.t));
 }
 
@@ -194,7 +205,7 @@ constexpr static void destroy(is_storage auto& u) {
   union type<T, triv_ctor, triv_dtor, triv_cctor, triv_mctor>           \
   {                                                                     \
     using stored_type = T;                                              \
-    struct {} _monotype = {};                                           \
+    struct {} _monostate = {};                                          \
     T t;                                                                \
     P0848_MAKE_CTOR(triv_ctor,       P0848_WRAP(type));                 \
     P0848_MAKE_DTOR(triv_dtor,       P0848_WRAP(type));                 \
