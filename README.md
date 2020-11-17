@@ -1,6 +1,19 @@
 # ce
 Useful tools for constexpr work.
 
+## `ce::P0848::storage_type`
+
+This template defines a `union` type that can serve as a box for unintialized
+data `T`. It is special in that the boxed `union` will export the same trival
+traits as the underlying type. This can be used in any code, I use it to
+provide uninitialized vector storage (see details below). It's called `P0848`
+because it is composed of workarounds for clang's missing support.
+
+Dealing with unions is complicated. In order to activate the underlying data
+you use `construct(u, ts...)` in the same way you would use placement new,
+and `destroy(u)` as expected. My code directly accesses the underlying `T` as
+`u.t`, but more sophistication could easily be added to this.
+
 ## vectors
 
 - `cvector<T, N>` a statically allocated vector that supports non-trivially
