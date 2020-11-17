@@ -37,11 +37,11 @@ using namespace ce::tests;
 template <typename T>
 constexpr static bool check() {
   using V = ce::cvector<T, 8>;
-  CE_CHECK(not (std::is_trivially_destructible_v<T> ^ std::is_trivially_destructible_v<V>));
-  CE_CHECK(not (std::is_trivially_copy_constructible_v<T> ^ std::is_trivially_copy_constructible_v<V>));
-  CE_CHECK(not (std::is_trivially_move_constructible_v<T> ^ std::is_trivially_move_constructible_v<V>));
-  CE_CHECK(not (std::is_trivially_copy_assignable_v<T> ^ std::is_trivially_copy_assignable_v<V>));
-  CE_CHECK(not (std::is_trivially_move_assignable_v<T> ^ std::is_trivially_move_assignable_v<V>));
+  CE_CHECK(std::is_trivially_destructible_v<T> == std::is_trivially_destructible_v<V>);
+  CE_CHECK(std::is_trivially_copy_constructible_v<T> == std::is_trivially_copy_constructible_v<V>);
+  CE_CHECK(std::is_trivially_move_constructible_v<T> == std::is_trivially_move_constructible_v<V>);
+  CE_CHECK(std::is_trivially_copy_assignable_v<T> == std::is_trivially_copy_assignable_v<V>);
+  CE_CHECK(std::is_trivially_move_assignable_v<T> == std::is_trivially_move_assignable_v<V>);
 
   constexpr V decl;
   constexpr V ctor{};
