@@ -299,9 +299,11 @@ struct dvector
   constexpr void reallocate(int n) {
     T *old = std::exchange(data_, allocate(n));
     for (int i = 0; i < size_; ++i) {
-      std::construct_at(&data_[i], std::move(old[i]));
+      construct(i, std::move(old[i]));
     }
-    alloc_.deallocate(old, capacity_);
+    if (old) {
+      alloc_.deallocate(old, capacity_);
+    }
     capacity_ = n;
   }
 };
