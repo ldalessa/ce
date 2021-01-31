@@ -33,10 +33,9 @@
 // A C++20 constexpr vector-ish implementation.
 // ----------------------------------------------------------------------------
 
-//#include <bit>
 #include <cassert>
-//#include <concepts>
 #include <iterator>
+#include <memory>
 #include <utility>
 
 namespace ce {
