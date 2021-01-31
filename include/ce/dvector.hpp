@@ -30,17 +30,14 @@
 #pragma once
 
 // ----------------------------------------------------------------------------
-// A C++20 constexpr vector implementation.
-//
-// This implementation uses dynamic storage allocation and attempts to more
-// closely conform to std::vector.
+// A C++20 constexpr vector-ish implementation.
 // ----------------------------------------------------------------------------
 
-#include "P0848.hpp"
-#include <bit>
+//#include <bit>
 #include <cassert>
-#include <concepts>
+//#include <concepts>
 #include <iterator>
+#include <utility>
 
 namespace ce {
 template <typename T>
@@ -49,16 +46,17 @@ struct dvector
   using value_type = T;
 
  private:
-  using storage_type = P0848::storage_type<T>;
+  std::allocator<T> alloc_ = {};
   int capacity_ = 0;
   int size_ = 0;
-  storage_type *storage_ = nullptr;
+  T *data_ = nullptr;
 
  public:
   constexpr ~dvector()
   {
     clear();
-    delete [] storage_;
+    deallocate(data_, capacity_);
+    capacity_ = 0;
   }
 
   constexpr dvector() = default;
@@ -66,12 +64,12 @@ struct dvector
   constexpr dvector(int n)
       : capacity_(n)
       ,     size_(n)
-      ,  storage_(allocate(capacity_))
+      ,     data_(allocate(capacity_))
   {
     assert(n >= 0);
     assert(std::is_default_constructible_v<T> || n == 0);
     for (int i = 0; i < size_; ++i) {
-      construct(storage_[i]);
+      construct(i);
     }
   }
 
@@ -91,18 +89,18 @@ struct dvector
   constexpr dvector(const dvector& b)
       : capacity_(b.capacity_)
       ,     size_(b.size_)
-      ,  storage_(allocate(capacity_))
+      ,     data_(allocate(capacity_))
   {
     // copy construct the storage array elements
     for (int i = 0; i < size_; ++i) {
-      construct(storage_[i], b[i]);
+      construct(i, b[i]);
     }
   }
 
   constexpr dvector(dvector&& b)
       : capacity_(std::exchange(b.capacity_, 0))
       ,     size_(std::exchange(b.size_, 0))
-      ,  storage_(std::exchange(b.storage_, nullptr))
+      ,     data_(std::exchange(b.data_, nullptr))
   {
   }
 
@@ -111,21 +109,21 @@ struct dvector
     // if `b` has a larger capacity, then clear and reallocate our storage array
     if (capacity_ < b.capacity_) {
       clear();
-      delete [] storage_;
+      deallocate(data_, capacity_);
+      data_ = allocate(b.capacity_);
       capacity_ = b.capacity_;
-      storage_ = allocate(capacity_);
     }
 
     // copy assign or construct as necessary
     int i = 0;
     for (; i < std::min(size_, b.size_); ++i) {
-      storage_[i].t = b[i];
+      data_[i] = b[i];
     }
     for (; i < b.size_; ++i) {
-      construct(storage_[i], b[i]);
+      construct(i, b[i]);
     }
     for (; i < size_; ++i) {
-      destroy(storage_[i]);
+      destroy(i);
     }
     size_ = b.size_;
     return *this;
@@ -135,57 +133,53 @@ struct dvector
   {
     // destroy our active storage array
     clear();
-    delete [] storage_;
+    deallocate(data_, capacity_);
 
     // and take all of b's data
     capacity_ = std::exchange(b.capacity_, 0);
     size_     = std::exchange(b.size_, 0);
-    storage_  = std::exchange(b.storage_, nullptr);
+    data_     = std::exchange(b.data_, nullptr);
 
     return *this;
   }
 
   // Element access.
   constexpr const T& operator[](int i) const { assert(0 <= i && i < size_);
-    return storage_[i].t;
+    return data_[i];
   }
 
   constexpr T& operator[](int i) { assert(0 <= i && i < size_);
-    return storage_[i].t;
+    return data_[i];
   }
 
   constexpr const T& front() const { assert(size_ > 0);
-    return storage_[0].t;
+    return data_[0];
   }
 
   constexpr T& front() { assert(size_ > 0);
-    return storage_[0].t;
+    return data_[0];
   }
 
   constexpr const T& back() const { assert(size_ > 0);
-    return storage_[size_ - 1].t;
+    return data_[size_ - 1];
   }
 
   constexpr T& back() { assert(size_ > 0);
-    return storage_[size_ - 1].t;
+    return data_[size_ - 1];
   }
 
   const T* data() const {
-    return reinterpret_cast<const T*>(storage_);
+    return data_;
   }
 
   T* data() {
-    return reinterpret_cast<T*>(storage_);
+    return data_;
   }
 
-  // Iterators.
-  using iterator = P0848::storage_iterator_type<storage_type>;
-  using const_iterator = P0848::storage_iterator_type<const storage_type>;
-
-  constexpr const_iterator begin() const { return {storage_}; }
-  constexpr       iterator begin()       { return {storage_}; }
-  constexpr const_iterator   end() const { return {storage_ + size_}; }
-  constexpr       iterator   end()       { return {storage_ + size_}; }
+  constexpr auto begin() const { return data_; }
+  constexpr auto begin()       { return data_; }
+  constexpr auto   end() const { return data_ + size_; }
+  constexpr auto   end()       { return data_ + size_; }
 
   constexpr auto rbegin() const { return std::reverse_iterator(end()); }
   constexpr auto rbegin()       { return std::reverse_iterator(end()); }
@@ -207,12 +201,7 @@ struct dvector
 
   constexpr void reserve(int n) {
     if (capacity_ < n) {
-      capacity_ = n;
-      storage_type *temp = allocate(capacity_);
-      for (int i = 0; i < size_; ++i) {
-        construct(temp[i], std::move(storage_[i]));
-      }
-      delete [] std::exchange(storage_, temp);
+      reallocate(n);
     }
   }
 
@@ -222,12 +211,7 @@ struct dvector
 
   constexpr void shrink_to_fit() {
     if (size_ < capacity_) {
-      capacity_ = size_;
-      storage_type *temp = allocate(capacity_);
-      for (int i = 0; i < size_; ++i) {
-        construct(temp[i], std::move(storage_[i]));
-      }
-      delete [] std::exchange(storage_, temp);
+      reallocate(size_);
     }
   }
 
@@ -242,25 +226,25 @@ struct dvector
     if (size_ == capacity_) {
       reserve(std::max(2 * capacity_, 1));
     }
-    return construct(storage_[size_++], std::forward<Ts>(ts)...);
+    return construct(size_++, std::forward<Ts>(ts)...);
   }
 
   constexpr T& push_back(const T& t) {
     if (size_ == capacity_) {
       reserve(std::max(2 * capacity_, 1));
     }
-    return construct(storage_[size_++], t);
+    return construct(size_++, t);
   }
 
   constexpr T& push_back(T&& t) {
     if (size_ == capacity_) {
       reserve(std::max(2 * capacity_, 1));
     }
-    return construct(storage_[size_++], std::move(t));
+    return construct(size_++, std::move(t));
   }
 
   constexpr T pop_back() { assert(size_ > 0);
-    return std::move(storage_[--size_].t);
+    return std::move(data_[--size_]);
   }
 
   constexpr void resize(int n) {
@@ -271,14 +255,15 @@ struct dvector
 
     // if n was smaller than the size, destroy the excess elements
     for (int i = n; i < size_; ++i) {
-      destroy(storage_[i]);
+      destroy(i);
     }
 
     // if n was larger than the size, then default construct the excess
     for (int i = size_; i < n; ++i) {
       assert(std::is_default_constructible_v<T>);
-      construct(storage_[i]);
+      construct(i);
     }
+
     size_ = n;
   }
 
@@ -286,14 +271,40 @@ struct dvector
   {
     // destroy the active elements
     for (int i = 0; i < size_; ++i) {
-      destroy(storage_[i]);
+      destroy(i);
     }
     size_ = 0;
   }
 
  private:
-  constexpr static storage_type* allocate(int n) {
-    return (n) ? new storage_type[n] : nullptr;
+  constexpr T* allocate(int n) {
+    return alloc_.allocate(n);
+  }
+
+  constexpr void deallocate(T *ptr, int n) {
+    if (ptr) {
+      alloc_.deallocate(ptr, n);
+    }
+  }
+
+  template <class... Ts>
+  constexpr T& construct(int i, Ts&&... ts) {
+    return *std::construct_at(data_ + i, std::forward<Ts>(ts)...);
+  }
+
+  constexpr void destroy(int i) {
+    std::destroy_at(data_ + i);
+  }
+
+  constexpr void reallocate(int n) {
+    T *old = std::exchange(data_, allocate(n));
+    for (int i = 0; i < size_; ++i) {
+      construct(i, std::move(old[i]));
+    }
+    if (old) {
+      alloc_.deallocate(old, capacity_);
+    }
+    capacity_ = n;
   }
 };
 
