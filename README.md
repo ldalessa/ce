@@ -1,7 +1,25 @@
 # ce
 Useful tools for constexpr work.
 
-## `ce::P0848::storage_type`
+## dvectors
+  
+- `dvector<T>` a dynamically allocated vector that use std::allocate for memory
+  allocation
+  
+These sort of approximate `std::vector` but with an API more like what I
+want. Pull requests to more closely match the `std::vector` API are welcome. 
+
+## cvectors
+
+- `cvector<T, N>` a statically allocated vector that supports non-trivially
+  constructible types.
+
+`constexpr` vectors that supports types without trivial constructors, while
+preserving their `is_trivial*` set of types. Requires C++20 and a compiler that
+supports concepts, with the `concepts` header. Neither vector API truly matches
+`std::vector`'s API.
+
+### `ce::P0848::storage_type`
 
 This template defines a `union` type that can serve as a box for unintialized
 data `T`. It is special in that the boxed `union` will export the same trival
@@ -13,20 +31,6 @@ Dealing with unions is complicated. In order to activate the underlying data
 you use `construct(u, ts...)` in the same way you would use placement new,
 and `destroy(u)` as expected. My code directly accesses the underlying `T` as
 `u.t`, but more sophistication could easily be added to this.
-
-## vectors
-
-- `cvector<T, N>` a statically allocated vector that supports non-trivially
-  constructible types.
-  
-- `dvector<T>` a dynamically allocated vector that supports non-trivially
-  constructible types
-
-
-`constexpr` vectors that supports types without trivial constructors, while
-preserving their `is_trivial*` set of types. Requires C++20 and a compiler that
-supports concepts, with the `concepts` header. Neither vector API truly matches
-`std::vector`'s API.
 
 The general idea is to use an array of `union { T t }` to store the elements of
 the array, as such unions can be created without initializing the underlying
@@ -47,10 +51,6 @@ design, which I've attempted to encapsulate in the `include/ce/P0848.hpp`
 header. The `cvector_base` class template implements the vector using a `union`
 array that is declared using `P0848` helpers, and then the `cvector` class
 template sorts out the `T`-relative `P0848` support via policy inheritance.
-
-The `dvector` can't really support trait inheritance in the same way as
-`cvector` because it needs to have non-trivial behavior in all of the special
-members in order to manage the array, so it is just implemented directly.
 
 ### Iterator issues
 
