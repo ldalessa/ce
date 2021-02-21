@@ -175,10 +175,10 @@ struct dvector
     return data_;
   }
 
-  constexpr auto begin() const { return data_; }
-  constexpr auto begin()       { return data_; }
-  constexpr auto   end() const { return data_ + size_; }
-  constexpr auto   end()       { return data_ + size_; }
+  constexpr const T* begin() const { return data_; }
+  constexpr       T* begin()       { return data_; }
+  constexpr const T*   end() const { return data_ + size_; }
+  constexpr       T*   end()       { return data_ + size_; }
 
   constexpr auto rbegin() const { return std::reverse_iterator(end()); }
   constexpr auto rbegin()       { return std::reverse_iterator(end()); }
