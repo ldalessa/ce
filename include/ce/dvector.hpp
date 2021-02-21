@@ -27,7 +27,8 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#pragma once
+#ifndef CE_INCLUDE_CE_DVECTOR_HPP
+#define CE_INCLUDE_CE_DVECTOR_HPP
 
 // ----------------------------------------------------------------------------
 // A C++20 constexpr vector-ish implementation.
@@ -35,6 +36,7 @@
 
 #include <cassert>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -313,3 +315,5 @@ dvector(std::in_place_t, T, Ts...) -> dvector<T>;
 template <typename T, std::convertible_to<T>... Ts>
 dvector(std::in_place_type_t<T>, Ts...) -> dvector<T>;
 }
+
+#endif // CE_INCLUDE_CE_DVECTOR_HPP
