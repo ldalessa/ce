@@ -45,6 +45,11 @@ struct tests {
 #endif
   constexpr static ce::cvector<T, 1> define{};
 
+  constexpr static bool zero_length() {
+    ce::cvector<T, 0> a; (void)a;
+    return true;
+  }
+
   constexpr static bool basic_ctor() {
     ce::cvector<T, 3> a;
     CE_CHECK(size(a) == 0);
@@ -283,6 +288,15 @@ struct tests {
     return true;
   }
 
+  constexpr static bool remove() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2, 3 };
+    a.remove(a.begin() + 1);
+    CE_CHECK(size(a) == 2);
+    CE_CHECK(a[0] == 1);
+    CE_CHECK(a[1] == 3);
+    return true;
+  }
+
   constexpr static bool iteration() {
     ce::cvector<T, 16> a = { std::in_place, 1, 2, 3, 4 };
     CE_CHECK(size(a) == 4);
@@ -297,6 +311,7 @@ struct tests {
   }
 
   constexpr static bool all() {
+    CE_CHECK(zero_length());
     CE_CHECK(basic_ctor());
     CE_CHECK(sized_ctor());
     CE_CHECK(read());
@@ -321,6 +336,7 @@ struct tests {
     CE_CHECK(move_smaller());
     CE_CHECK(move_larger());
     CE_CHECK(clear());
+    CE_CHECK(remove());
     CE_CHECK(iteration());
     return true;
   }

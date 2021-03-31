@@ -43,8 +43,8 @@ constexpr static bool check() {
   CE_CHECK(std::is_trivially_copy_assignable_v<T> == std::is_trivially_copy_assignable_v<V>);
   CE_CHECK(std::is_trivially_move_assignable_v<T> == std::is_trivially_move_assignable_v<V>);
 
-  constexpr V decl;
-  constexpr V ctor{};
+  constexpr V decl; (void)decl;
+  constexpr V ctor{}; (void)ctor;
   return true;
 };
 

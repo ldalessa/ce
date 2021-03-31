@@ -241,6 +241,16 @@ struct cvector_impl
     return std::move(storage_[--size_].t);
   }
 
+  constexpr void remove_at(int i) { assert(0 <= i and i < size_);
+    for (int e = --size_; i < e; ++i) {
+      storage_[i].t = std::move(storage_[i + 1].t);
+    }
+  }
+
+  constexpr void remove(iterator i) {
+    remove_at(std::distance(begin(), i));
+  }
+
   constexpr void resize(int n) { assert(0 <= n && n <= N);
     for (int i = n; i < size_; ++i) {
       destroy(storage_[i]);                      // shrinking
@@ -376,6 +386,16 @@ struct cvector_trivial
 
   constexpr T pop_back() { assert(size_ > 0);
     return std::move(storage_[--size_]);
+  }
+
+  constexpr void remove_at(int i) { assert(0 <= i and i < size_);
+    for (int e = --size_; i < e; ++i) {
+      storage_[i] = std::move(storage_[i + 1]);
+    }
+  }
+
+  constexpr void remove(T* i) {
+    remove_at(std::distance(begin(), i));
   }
 
   constexpr void resize(int n) { assert(0 <= n && n <= N);

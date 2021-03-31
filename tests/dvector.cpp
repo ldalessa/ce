@@ -400,7 +400,7 @@ struct tests {
 
 static_assert(tests<int>::all());
 
-int main(int argc, char* const[]) {
+int main(int, char* const[]) {
   tests<int>::all();
 #define CE_EXPAND(...) tests<Foo<__VA_ARGS__>>::all()
 #include "common.decl"

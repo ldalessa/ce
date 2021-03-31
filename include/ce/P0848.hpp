@@ -190,7 +190,7 @@ constexpr static void destroy(is_storage auto& u)
   P0848_MAKE_DTOR_##defaulted(P0848_WRAP(type))
 
 #define P0848_MAKE_COPY_CTOR_1(type) constexpr type(const type&) = default
-#define P0848_MAKE_COPY_CTOR_0(type) constexpr type(const type& b) {}
+#define P0848_MAKE_COPY_CTOR_0(type) constexpr type(const type&) {}
 #define P0848_MAKE_COPY_CTOR(defaulted, type)           \
   P0848_MAKE_COPY_CTOR_##defaulted(P0848_WRAP(type))
 
