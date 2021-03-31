@@ -37,5 +37,11 @@ target_compile_features(ce_lib INTERFACE cxx_std_20)
 
 add_library(ce::ce ALIAS ce_lib)
 
-include (CTest)
-add_subdirectory(tests)
+option(CE_BUILD_TESTING "build the ce unit tests" ON)
+
+if (CE_BUILD_TESTING)
+  include (CTest)
+  if (BUILD_TESTING)
+    add_subdirectory(tests)
+  endif (BUILD_TESTING)
+endif (CE_BUILD_TESTING)
