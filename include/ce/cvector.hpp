@@ -419,6 +419,19 @@ struct cvector : cvector_base<T, N>
 {
   using base = cvector_base<T, N>;
   using base::base;
+
+  // Implementing these here so that I don't have to repeat them.
+  template <int M>
+  constexpr friend auto operator==(cvector const& a, cvector<T, M> const& b)
+  {
+    return a.size() == b.size() and std::equal(a.begin(), a.end(), b.begin());
+  }
+
+  template <int M>
+  constexpr friend auto operator<=>(cvector const& a, cvector<T, M> const& b)
+  {
+    return std::lexicographical_compare_three_way(a.begin(), a.end(), b.begin(), b.end());
+  }
 };
 
 template <typename T, std::convertible_to<T>... Ts>

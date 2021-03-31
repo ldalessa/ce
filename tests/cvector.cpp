@@ -116,6 +116,28 @@ struct tests {
     return true;
   }
 
+  constexpr static bool equivalence() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2 };
+    ce::cvector<T, 3> b = { std::in_place, 2 };
+    CE_CHECK(a == a);
+    CE_CHECK(a != b);
+    return true;
+  }
+
+  constexpr static bool order() {
+    ce::cvector<T, 3> a = { std::in_place, 1, 2 };
+    ce::cvector<T, 3> b = { std::in_place, 1 };
+    ce::cvector<T, 3> c = { std::in_place, 2 };
+    CE_CHECK(b < a);
+    CE_CHECK(b <= a);
+    CE_CHECK(b <= b);
+    CE_CHECK(a > b);
+    CE_CHECK(a >= b);
+    CE_CHECK(b >= b);
+    CE_CHECK(a < c);
+    return true;
+  }
+
   constexpr static bool resize() {
     ce::cvector<T, 3> a;
     a.resize(1);
@@ -319,6 +341,8 @@ struct tests {
     CE_CHECK(front());
     CE_CHECK(back());
     CE_CHECK(ctad_inplace());
+    CE_CHECK(equivalence());
+    CE_CHECK(order());
     CE_CHECK(resize());
     CE_CHECK(resize_data());
     CE_CHECK(resize_smaller());
