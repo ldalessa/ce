@@ -167,6 +167,37 @@ struct tests {
     CE_CHECK(b[0] == 1);
   }
 
+  constexpr static bool equivalence() {
+    ce::dvector<T> a = { };
+    ce::dvector<T> b = { };
+    CE_CHECK(a == a);
+    CE_CHECK(a == b);
+
+    ce::dvector<T> c = { std::in_place, 1, 2 };
+    ce::dvector<T> d = { std::in_place, 2 };
+    CE_CHECK(c == c);
+    CE_CHECK(a != c);
+    CE_CHECK(d != c);
+
+    return true;
+  }
+
+  constexpr static bool order() {
+    ce::dvector<T> a = { std::in_place, 1, 2 };
+    ce::dvector<T> b = { std::in_place, 1 };
+    ce::dvector<T> c = { std::in_place, 2 };
+    ce::dvector<T> d;
+    CE_CHECK(b < a);
+    CE_CHECK(b <= a);
+    CE_CHECK(b <= b);
+    CE_CHECK(a > b);
+    CE_CHECK(a >= b);
+    CE_CHECK(b >= b);
+    CE_CHECK(a < c);
+    CE_CHECK(d < c);
+    return true;
+  }
+
   constexpr static void write() {
     ce::dvector<T> a(2);
     check_structure(a, 2, 2);
@@ -372,6 +403,8 @@ struct tests {
     move();
     move_larger();
     move_smaller();
+    equivalence();
+    order();
     write();
     front();
     back();

@@ -144,6 +144,17 @@ struct dvector
     return *this;
   }
 
+  // Comparisons.
+  constexpr friend auto operator==(dvector const& a, dvector const& b)
+  {
+    return a.size() == b.size() and std::equal(a.begin(), a.end(), b.begin());
+  }
+
+  constexpr friend auto operator<=>(dvector const& a, dvector const& b)
+  {
+    return std::lexicographical_compare_three_way(a.begin(), a.end(), b.begin(), b.end());
+  }
+
   // Element access.
   constexpr const T& operator[](int i) const { assert(0 <= i && i < size_);
     return data_[i];
