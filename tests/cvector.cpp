@@ -28,6 +28,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "ce/concepts.hpp"
 #include "ce/cvector.hpp"
 #include "common.hpp"
 #include "Foo.hpp"
@@ -38,7 +39,13 @@
 using namespace ce::tests;
 
 template <typename T>
-struct tests {
+struct tests
+{
+  static_assert(ce::is_cvector<ce::cvector<T,0>>);
+  static_assert(ce::is_vector<ce::cvector<T,1>>);
+  static_assert(ce::is_cvector_base<ce::cvector<T,0>>);
+  static_assert(ce::is_vector_base<ce::cvector<T,1>>);
+
   // waiting for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=97665, I think
 #ifdef __clang__
   constexpr static ce::cvector<T, 1> declare;

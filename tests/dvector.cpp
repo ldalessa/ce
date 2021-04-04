@@ -28,6 +28,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "ce/concepts.hpp"
 #include "ce/dvector.hpp"
 #include "common.hpp"
 #include "Foo.hpp"
@@ -36,7 +37,13 @@
 using namespace ce::tests;
 
 template <typename T>
-struct tests {
+struct tests
+{
+  static_assert(ce::is_dvector<ce::dvector<T>>);
+  static_assert(ce::is_vector<ce::dvector<T>>);
+  static_assert(ce::is_dvector_base<ce::dvector<T>>);
+  static_assert(ce::is_vector_base<ce::dvector<T>>);
+
   constexpr static void
   check_structure(auto& v, int capacity, int size, source_location&& src = source_location::current())
   {
