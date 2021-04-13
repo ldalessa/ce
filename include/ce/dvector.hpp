@@ -46,13 +46,11 @@ struct dvector
 {
   using value_type = T;
 
- private:
   std::allocator<T> alloc_ = {};
   int capacity_ = 0;
   int size_ = 0;
   T *data_ = nullptr;
 
- public:
   constexpr ~dvector()
   {
     clear();
@@ -257,6 +255,16 @@ struct dvector
 
   constexpr T pop_back() { assert(size_ > 0);
     return std::move(data_[--size_]);
+  }
+
+  constexpr void remove_at(int i) { assert(0 <= i and i < size_);
+    for (int e = --size_; i < e; ++i) {
+      data_[i] = std::move(data_[i + 1]);
+    }
+  }
+
+  constexpr void remove(T* i) {
+    remove_at(std::distance(begin(), i));
   }
 
   constexpr void resize(int n) {

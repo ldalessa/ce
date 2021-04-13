@@ -362,6 +362,15 @@ struct tests
     check_structure(a, 3, 0);
   }
 
+  constexpr static bool remove() {
+    ce::dvector<T> a = { std::in_place, 1, 2, 3 };
+    a.remove(a.begin() + 1);
+    CE_CHECK(a.size() == 2);
+    CE_CHECK(a[0] == 1);
+    CE_CHECK(a[1] == 3);
+    return true;
+  }
+
   constexpr static void non_default_ctor() {
     T x = 1, y = 2, z = 3;
     ce::dvector<std::reference_wrapper<T>> a;
@@ -428,6 +437,7 @@ struct tests
     resize_smaller();
     resize_larger();
     clear();
+    remove();
     non_default_ctor();
     iterator();
     return true;
