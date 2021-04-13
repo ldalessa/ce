@@ -339,6 +339,15 @@ struct tests
     return true;
   }
 
+  constexpr static bool incomplete_initialization() {
+    constexpr int M = [] {
+      ce::cvector<T, 16> a;
+      a.push_back(1);
+      return a;
+    }().size(); (void)M;
+    return true;
+  }
+
   constexpr static bool all() {
     CE_CHECK(zero_length());
     CE_CHECK(basic_ctor());
@@ -369,6 +378,7 @@ struct tests
     CE_CHECK(clear());
     CE_CHECK(remove());
     CE_CHECK(iteration());
+    CE_CHECK(incomplete_initialization());
     return true;
   }
 };
