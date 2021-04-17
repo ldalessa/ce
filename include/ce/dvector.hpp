@@ -298,7 +298,7 @@ struct dvector
 
  private:
   constexpr T* allocate(int n) {
-    return alloc_.allocate(n);
+    return (n != 0) ? alloc_.allocate(n) : nullptr;
   }
 
   constexpr void deallocate(T *ptr, int n) {

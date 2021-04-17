@@ -403,6 +403,16 @@ struct tests
     CE_CHECK(z == 4);
   }
 
+  constexpr static void leak_empty() {
+    constexpr ce::dvector<T> v = [] {
+      ce::dvector<T> v = { std::in_place };
+      v.resize(0);
+      v.shrink_to_fit();
+      return v;
+    }();
+    (void)v;
+  }
+
   constexpr static bool all() {
     ctor_default();
     ctor_n();
@@ -440,6 +450,9 @@ struct tests
     remove();
     non_default_ctor();
     iterator();
+#if __GNUC__ > 10 or (__GNUC__ == 10 and __GNUC_MINOR__ >= 3)
+    leak_empty();
+#endif
     return true;
   }
 };
