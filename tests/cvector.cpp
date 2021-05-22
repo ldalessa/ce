@@ -444,7 +444,16 @@ static_assert(ctad_variadic_conversion());
 static_assert(iteration());
 static_assert(references());
 
-int main() {
+template <ce::is_cvector auto V>
+struct CNTTP
+{
+};
+
+int main()
+{
+  constexpr ce::cvector<int, 16> ints;
+  CNTTP<ints> cnttp;
+  unused(cnttp);
 
 #define CE_EXPAND(...) tests<Foo<__VA_ARGS__>>::all()
 #include "common.decl"

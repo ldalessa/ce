@@ -82,12 +82,10 @@ struct cvector_impl
 {
   using value_type = T;
 
- private:
   using storage_type = P0848::storage_type<T>;
   storage_type storage_[N] = {};
   int size_ = 0;
 
- public:
   constexpr cvector_impl()                    = default;
   constexpr cvector_impl(const cvector_impl&) = default;
   constexpr cvector_impl(cvector_impl&&)      = default;
@@ -307,11 +305,9 @@ struct cvector_trivial
 {
   using value_type = T;
 
- private:
   T storage_[N] = {};
   int  size_    = 0;
 
- public:
   constexpr cvector_trivial() = default;
 
   constexpr cvector_trivial(int n) : size_(n) {

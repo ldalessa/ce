@@ -53,3 +53,5 @@ check(bool condition, const char *expr,
 }
 
 #define CE_CHECK(expr, ...) check((expr), #expr, ##__VA_ARGS__)
+
+constexpr void unused(...) {}
